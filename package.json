@@ -1,0 +1,22 @@
+{
+  "name": "node-mvc",
+  "version": "1.0.0",
+  "description": "nodejs project-structure manager .",
+  "main": "index.js",
+  "scripts": {
+    "test": "node-mvc --version"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pacifiquem/node-mvc.git"
+  },
+  "keywords": [
+    "node.js"
+  ],
+  "author": "pacifiquem@github.com",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pacifiquem/node-mvc/issues"
+  },
+  "homepage": "https://github.com/pacifiquem/node-mvc#readme"
+}
