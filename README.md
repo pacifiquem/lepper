@@ -1,2 +1,2 @@
-# node-mvc
+# npx-mvc
 nodejs project-structure manager .
