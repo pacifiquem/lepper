@@ -23,16 +23,11 @@
   },
   "homepage": "https://github.com/pacifiquem/node-mvc#readme",
   "dependencies": {
-    "axios": "^1.2.1",
-    "boxen": "^4.2.0",
     "chalk": "^4.1.0",
     "clear": "^0.1.0",
     "cli-spinners": "^2.5.0",
-    "dotenv": "^16.0.3",
     "inquirer": "^7.3.2",
     "open": "^7.0.4",
-    "ora": "^5.1.0",
-    "request": "^2.88.2",
     "yargs": "^17.6.2"
   }
 }
