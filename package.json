@@ -4,7 +4,7 @@
   "description": "nodejs project-structure manager .",
   "main": "index.js",
   "bin": {
-    "node-mvc": "/bin/index.js"
+    "node-mvc": "/bin/node-mvc.js"
   },
   "scripts": {
     "test": "node-mvc --version"
