@@ -1,5 +1,5 @@
 {
-  "name": "node-mvc",
+  "name": "npx-proj",
   "version": "1.0.0",
   "description": "nodejs project-structure manager .",
   "main": "index.js",
