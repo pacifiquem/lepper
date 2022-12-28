@@ -4,14 +4,14 @@
   "description": "nodejs project-structure manager .",
   "main": "index.js",
   "bin": {
-    "node-mvc": "/bin/node-mvc.js"
+    "npx-proj": "/bin/npx-proj.js"
   },
   "scripts": {
-    "test": "node-mvc --version"
+    "test": "npx-proj --version"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pacifiquem/node-mvc.git"
+    "url": "git+https://github.com/pacifiquem/npx-proj.git"
   },
   "keywords": [
     "node.js"
@@ -19,9 +19,9 @@
   "author": "pacifiquem@github.com",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/pacifiquem/node-mvc/issues"
+    "url": "https://github.com/pacifiquem/npx-proj/issues"
   },
-  "homepage": "https://github.com/pacifiquem/node-mvc#readme",
+  "homepage": "https://github.com/pacifiquem/npx-proj#readme",
   "dependencies": {
     "chalk": "^4.1.0",
     "clear": "^0.1.0",
