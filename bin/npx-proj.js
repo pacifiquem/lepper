@@ -19,7 +19,7 @@ program
   .option('-fo, --folders <value...>', 'folder you want to initialize ?', '')
   .action((argument, options) => {
     let directory = cwd();
-    init(options.folders, directory);
+    init(argument, options.folders, directory);
   });
 
   program.command('generate')

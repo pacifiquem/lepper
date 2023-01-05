@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 
-module.exports.init = (folders, directory) => {
+module.exports.init = (projName, folders, directory) => {
     if(folders != undefined && directory != undefined) {
 
         //remove duplicates
