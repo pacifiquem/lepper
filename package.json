@@ -1,10 +1,10 @@
 {
   "name": "npx-proj",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "nodejs project-structure manager .",
   "main": "index.js",
   "bin": {
-    "npx-proj": "node /bin/npx-proj.js"
+    "npx-proj": "/bin/npx-proj.js"
   },
   "scripts": {
     "test": "npx-proj --version"
