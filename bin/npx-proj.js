@@ -3,6 +3,7 @@
 const { Command } = require('commander');
 const program = new Command();
 const path = require('path');
+const { cwd } = require('process');
 
 //commandHandlers
 const { init, generate} = require('../src/commandHandlers');
@@ -17,7 +18,7 @@ program
   .argument('<string>', 'name of your project')
   .option('-fo, --folders <value...>', 'folder you want to initialize ?', '')
   .action((argument, options) => {
-    let directory = __dirname;
+    let directory = cwd();
     init(options.folders, directory);
   });
 
@@ -27,7 +28,7 @@ program
   .option('-fi, --files <value...>', 'file you want to generate ?')
   .action((argument, options) => {
 
-    let directory = __dirname;
+    let directory = cwd();
     directory = path.join(directory, argument);
     generate(options.files, directory);
 
