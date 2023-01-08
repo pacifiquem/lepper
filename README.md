@@ -1,12 +1,12 @@
 # npx-proj
 
-### Installation
+## Installation
 
 ```js
     npm i -g npx-proj
 ```
 
-### Usage
+## Usage
 
 - #### Initializing project
 ```js
@@ -29,3 +29,13 @@
     npx-proj describe -p <projectname> //for projects
     npx-proj describe -fo <foldername> //for folders
     npx-proj describe -fi <filename> //for files
+```
+
+## Advantages of using npx-proj
+
+- Initializing projects easier with ordered folders .
+- Makes generating files easier .
+- Saving discription of projects, folders and files you've created .
+
+# Star and keep watchin' it cs new hot features are comming . (Those were the basic features ) .
+
