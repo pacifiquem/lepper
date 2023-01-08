@@ -1,0 +1,107 @@
+[33mcommit e517acc8fa3d27e38cb7c22f7aa4aade772cdc90[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m)[m
+Author: pacifiquem <pacifiquemurangwa001@gmail.com>
+Date:   Sun Jan 8 15:40:27 2023 +0200
+
+    feat: finished basic feature
+
+[33mcommit 348236645fda4c46f2375ee64378f70a2ec0e4ac[m
+Author: pacifiquem <pacifiquemurangwa001@gmail.com>
+Date:   Sun Jan 8 13:41:59 2023 +0200
+
+    migrated from yargs to commander
+
+[33mcommit da8d5a57772ac9a49c3cc9d9c0b8c7b7fc61a062[m[33m ([m[1;31morigin/main[m[33m)[m
+Author: pacifiquem <pacifiquemurangwa001@gmail.com>
+Date:   Sat Jan 7 12:26:15 2023 +0200
+
+    init
+
+[33mcommit ca4aa56f43d396f72035e8c65a89efe42df15251[m
+Author: pacifiquem <pacifiquemurangwa001@gmail.com>
+Date:   Sat Jan 7 12:13:43 2023 +0200
+
+     test: testing childprocess if is working
+
+[33mcommit 56fb29571594050d5fbb66ad9e5976241dc1e681[m
+Author: pacifiquem <pacifiquemurangwa001@gmail.com>
+Date:   Sat Jan 7 10:51:28 2023 +0200
+
+    test: testing environment
+
+[33mcommit 8caa31c35f74e31d3b478cb779143c6fff43f015[m
+Author: pacifiquem <pacifiquemurangwa001@gmail.com>
+Date:   Sat Jan 7 10:25:49 2023 +0200
+
+    update: run file
+
+[33mcommit cfc6ef60cddc3ae767b66c059ae0470f99c1a812[m
+Author: pacifiquem <pacifiquemurangwa001@gmail.com>
+Date:   Sat Jan 7 10:15:09 2023 +0200
+
+    update: run file
+
+[33mcommit 06a81ef3227a34d845a056c8e6ed591f092de00c[m
+Author: pacifiquem <pacifiquemurangwa001@gmail.com>
+Date:   Wed Dec 28 15:54:25 2022 +0200
+
+    refracotr: changed package name
+
+[33mcommit 6a8eaeaa905961a5146c6b05bced262eb1526839[m
+Author: M.Pac <96472682+pacifiquem@users.noreply.github.com>
+Date:   Wed Dec 28 15:53:00 2022 +0200
+
+    Update README.md
+
+[33mcommit a3b3f49c0944a49e0a6feb9986cfc834ff70f2a9[m
+Author: M.Pac <96472682+pacifiquem@users.noreply.github.com>
+Date:   Wed Dec 28 15:52:24 2022 +0200
+
+    Update README.md
+
+[33mcommit 9a433917042902e1e26216c0e1076531aecdb029[m
+Author: pacifiquem <pacifiquemurangwa001@gmail.com>
+Date:   Wed Dec 28 15:49:56 2022 +0200
+
+    refractor: renamed package
+
+[33mcommit 38c007c8e7d4fff28a3bc6484338cb370fb9c862[m
+Author: pacifiquem <pacifiquemurangwa001@gmail.com>
+Date:   Wed Dec 28 14:39:38 2022 +0200
+
+    refractor: removed unnecessary packages
+
+[33mcommit 29077777cdbf5936f2d0a4b7b19608d595cb2908[m
+Author: pacifiquem <pacifiquemurangwa001@gmail.com>
+Date:   Wed Dec 28 13:45:27 2022 +0200
+
+    refractor: renamed bin file to node-mvc
+
+[33mcommit 965c87a4a2a06eb3703ec2f09f38b5e03147ece9[m
+Author: pacifiquem <pacifiquemurangwa001@gmail.com>
+Date:   Wed Dec 28 13:41:25 2022 +0200
+
+    finished proj setup
+
+[33mcommit 621127b270a192218e0458c91aa54cdedbf78439[m
+Author: pacifiquem <pacifiquemurangwa001@gmail.com>
+Date:   Wed Dec 28 13:21:40 2022 +0200
+
+    *[feat: finished proj setup]
+
+[33mcommit f49ec78f87130ba9c3b544a8729b08d76e12a962[m
+Author: pacifiquem <pacifiquemurangwa001@gmail.com>
+Date:   Tue Dec 27 17:56:51 2022 +0200
+
+    feat: finished proj structure
+
+[33mcommit e312d96e2e7d63051b05d065473ea3ef7a8349e0[m
+Author: pacifiquem <pacifiquemurangwa001@gmail.com>
+Date:   Tue Dec 27 17:46:28 2022 +0200
+
+    feat: finished proj setup
+
+[33mcommit ca7d4c6a5dd79e06e2bf3fee9a6391d3ef4ba739[m
+Author: M.Pac <96472682+pacifiquem@users.noreply.github.com>
+Date:   Tue Dec 27 17:37:40 2022 +0200
+
+    Initial commit
