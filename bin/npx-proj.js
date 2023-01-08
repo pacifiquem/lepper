@@ -6,7 +6,7 @@ const path = require('path');
 const { cwd } = require('process');
 
 //commandHandlers
-const { init, generate} = require('../src/commands/commandHandlers');
+const { init, generate, descriptionManager} = require('../src/commands/commandHandlers');
 
 program
   .name('npx-proj')
@@ -34,5 +34,14 @@ program
 
   });
 
+  program.command('add-description')
+  .description('Command to add description to your project And its sub folders .')
+  .option('-p, --project', 'project you want to add description to ?')
+  .option('-fo, --folder <string>', 'folder you want to add description to ?')
+  .option('-fi, --file <string>', 'file you want to add description to ?')
+  .option('-m, --message <string>', 'message you want to add to your description ?')
+  .action((argument, options) => {
+    descriptionManager(argument);
+  });
 
 program.parse();
