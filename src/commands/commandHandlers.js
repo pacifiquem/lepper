@@ -1,7 +1,7 @@
 //packages
 const path = require('path');
 const fs = require('fs');
-
+const Table = require('cli-table');
 const processDirectory = process.cwd();
 
 
@@ -68,4 +68,97 @@ module.exports.descriptionManager = (argument) => {
         });
     }
 
+}
+
+
+module.exports.descriptionDisplayer = (argument) => {
+    if(argument.hasOwnProperty('file')) {
+        const fileName = argument.file;
+        const filesInDirectory = fs.readdirSync(processDirectory);
+        if(filesInDirectory.includes(fileName)) {
+
+            var table = new Table({
+                head: ['Filename', 'Discription']
+              , colWidths: [20, 100]
+            });
+
+            fs.readFile('./src/programm-data/files.txt', 'utf8', (err, data) => {
+                let arrayOfStrData = data.split('\n');
+                arrayOfStrData.map(str => {
+                    str = str.split(':');
+                    str[1] = str[1].replace('\r', '');
+                    table.push(str);
+                });
+            });
+
+            setTimeout(() => {
+                console.log(table.toString());
+            }, 2000);
+
+        }else {
+            console.log(`file not found in this directory`);
+        }
+    }
+
+    if(argument.hasOwnProperty('folder')) {
+        const folderName = argument.folder;
+        const foldersInDirectory = fs.readdirSync(processDirectory);
+        if(foldersInDirectory.includes(folderName)) {
+
+            var table = new Table({
+                head: ['Foldername', 'Discription']
+              , colWidths: [20, 100]
+            });
+
+            fs.readFile('./src/programm-data/folders.txt', 'utf8', (err, data) => {
+                let arrayOfStrData = data.split('\n');
+                arrayOfStrData.map(str => {
+                    str = str.split(':');
+                    str[1] = str[1].replace('\r', '');
+                    table.push(str);
+                });
+            });
+
+            setTimeout(() => {
+                console.log(table.toString());
+            }, 2000);
+
+        }else {
+            console.log(`folder not found in this directory`);
+        }
+    }
+
+
+    if(argument.hasOwnProperty('project')) {
+
+        const projectName = argument.project;
+    
+        var table = new Table({
+             head: ['Foldername', 'Discription'],
+              colWidths: [20, 100]
+        });
+    
+        fs.readFile('./src/programm-data/projects.txt', 'utf8', (err, data) => {
+            let arrayOfStrData = data.split('\n');
+            arrayOfStrData.map(str => {
+                str = str.split(':');
+                str[1] = str[1].replace('\r', '');
+                if(str[0] == projectName) {
+                    table.push(str);
+                }
+            });
+        });
+    
+        setTimeout(() => {
+            if(table.length > 0) {
+                console.log(table.toString());
+            }else {
+                console.log(`project not found`);
+            }
+        }, 2000);
+    
+    }else {
+            console.log(`folder not found in this directory`);
+    }
+    
 }
