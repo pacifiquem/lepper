@@ -62,7 +62,7 @@ module.exports.descriptionManager = (argument) => {
     }
 
     if(argument.hasOwnProperty('project')) {
-        const projectName= argument.Project;
+        const projectName= argument.project;
         fs.appendFile('./src/programm-data/projects.txt', `${projectName} : ${argument.message} \n`, (err) => {
             err ? console.log(err) : console.log(`description of ${projectName} was saved .`);
         });

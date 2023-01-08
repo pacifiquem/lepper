@@ -36,7 +36,7 @@ program
 
   program.command('add-description')
   .description('Command to add description to your project And its sub folders .')
-  .option('-p, --project', 'project you want to add description to ?')
+  .option('-p, --project <string>', 'project you want to add description to ?')
   .option('-fo, --folder <string>', 'folder you want to add description to ?')
   .option('-fi, --file <string>', 'file you want to add description to ?')
   .option('-m, --message <string>', 'message you want to add to your description ?')
