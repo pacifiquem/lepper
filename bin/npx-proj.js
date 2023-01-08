@@ -6,7 +6,7 @@ const path = require('path');
 const { cwd } = require('process');
 
 //commandHandlers
-const { init, generate} = require('../src/commandHandlers');
+const { init, generate} = require('../src/commands/commandHandlers');
 
 program
   .name('npx-proj')
