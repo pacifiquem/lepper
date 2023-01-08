@@ -26,8 +26,8 @@
     "chalk": "^4.1.0",
     "clear": "^0.1.0",
     "cli-spinners": "^2.5.0",
+    "commander": "^9.5.0",
     "inquirer": "^7.3.2",
-    "open": "^7.0.4",
-    "yargs": "^17.6.2"
+    "open": "^7.0.4"
   }
 }
