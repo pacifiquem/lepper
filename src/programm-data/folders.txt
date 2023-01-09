@@ -1,6 +1,0 @@
-testing: message for testing
-testing: message for testing1
-testing: message for testing2
-testing: message for testing3
-testing: message for testing4
-bin: message for testing5
