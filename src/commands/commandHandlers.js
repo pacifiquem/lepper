@@ -87,13 +87,19 @@ module.exports.descriptionDisplayer = (argument) => {
                 arrayOfStrData.map(str => {
                     str = str.split(':');
                     str[1] = str[1].replace('\r', '');
-                    table.push(str);
+                    if(str[0] == fileName) {
+                        table.push(str);
+                    }
                 });
             });
 
             setTimeout(() => {
-                console.log(table.toString());
-            }, 2000);
+                if(table.length > 0) {
+                    console.log(table.toString());
+                }else {
+                    console.log(`file not found`);
+                }
+            }, 1000);
 
         }else {
             console.log(`file not found in this directory`);
@@ -103,6 +109,7 @@ module.exports.descriptionDisplayer = (argument) => {
     if(argument.hasOwnProperty('folder')) {
         const folderName = argument.folder;
         const foldersInDirectory = fs.readdirSync(processDirectory);
+
         if(foldersInDirectory.includes(folderName)) {
 
             var table = new Table({
@@ -115,13 +122,19 @@ module.exports.descriptionDisplayer = (argument) => {
                 arrayOfStrData.map(str => {
                     str = str.split(':');
                     str[1] = str[1].replace('\r', '');
-                    table.push(str);
+                    if(str[0] === folderName) {
+                        table.push(str);
+                    }
                 });
             });
 
             setTimeout(() => {
-                console.log(table.toString());
-            }, 2000);
+                if(table.length > 0) {
+                    console.log(table.toString());
+                }else {
+                    console.log(`folder not found`);
+                }
+            }, 1000);
 
         }else {
             console.log(`folder not found in this directory`);
@@ -155,10 +168,7 @@ module.exports.descriptionDisplayer = (argument) => {
             }else {
                 console.log(`project not found`);
             }
-        }, 2000);
+        }, 1000);
     
-    }else {
-            console.log(`folder not found in this directory`);
     }
-    
 }
