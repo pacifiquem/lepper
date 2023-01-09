@@ -1,6 +1,6 @@
 {
   "name": "npx-proj",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "nodejs project-structure manager .",
   "main": "index.js",
   "bin": {
@@ -32,12 +32,8 @@
   },
   "homepage": "https://github.com/pacifiquem/npx-proj#readme",
   "dependencies": {
-    "chalk": "^4.1.0",
-    "clear": "^0.1.0",
-    "cli-spinners": "^2.5.0",
     "cli-table": "^0.3.11",
     "commander": "^9.5.0",
-    "inquirer": "^7.3.2",
-    "open": "^7.0.4"
+    "inquirer": "^7.3.2"
   }
 }
