@@ -10,7 +10,7 @@
 
 - #### Initializing project
 ```js
-    npx-proj init <project-name> -fo <foldername>
+    npx-proj init <project-name> -fo <list of folders>
     //you can add more than one folder name .
 ```
 - #### Generating file or folder
