@@ -1,4 +1,7 @@
 # npx-proj
+![npm](https://img.shields.io/npm/v/npx-proj.svg?style=flat-square)
+![NPM Downloads](https://img.shields.io/npm/dw/npx-proj?style=flat-square)
+<br>
 
 project structure manager .
 
