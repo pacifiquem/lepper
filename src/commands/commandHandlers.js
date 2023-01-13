@@ -38,11 +38,12 @@ module.exports.generate = (files, directory) => {
 //function for adding description to project or folder or even file
 module.exports.descriptionManager = (argument) => {
 
+    let programPath = `${path.join(__dirname, '..')}`;
     if(argument.hasOwnProperty('file')) {
         const fileName = argument.file;
         const filesInDirectory = fs.readdirSync(processDirectory);
         if(filesInDirectory.includes(fileName)) {
-            fs.appendFile('./src/programm-data/folders.txt', `${fileName} : ${argument.message} \n`, (err) => {
+            fs.appendFile(`${programPath}/programm-data/files.txt`, `${fileName} : ${argument.message} \n`, (err) => {
                 err ? console.log(err) : console.log(`description of ${fileName} was saved .`);
             });
         }else {
@@ -54,7 +55,7 @@ module.exports.descriptionManager = (argument) => {
         const folderName= argument.folder;
         const foldersInDirectory = fs.readdirSync(processDirectory);
         if(foldersInDirectory.includes(folderName)) {
-            fs.appendFile('./src/programm-data/folders.txt', `${folderName} : ${argument.message} \n`, (err) => {
+            fs.appendFile(`${programPath}/programm-data/folders.txt`, `${folderName} : ${argument.message} \n`, (err) => {
                 err ? console.log(err) : console.log(`description of ${folderName} was saved .`);
             });
         }else {
@@ -64,7 +65,7 @@ module.exports.descriptionManager = (argument) => {
 
     if(argument.hasOwnProperty('project')) {
         const projectName= argument.project;
-        fs.appendFile('./src/programm-data/projects.txt', `${projectName} : ${argument.message} \n`, (err) => {
+        fs.appendFile(`${programPath}/programm-data/projects.txt`, `${projectName} : ${argument.message} \n`, (err) => {
             err ? console.log(err) : console.log(`description of ${projectName} was saved .`);
         });
     }
@@ -83,7 +84,7 @@ module.exports.descriptionDisplayer = (argument) => {
               , colWidths: [20, 100]
             });
 
-            fs.readFile('./src/programm-data/files.txt', 'utf8', (err, data) => {
+            fs.readFile(`${programPath}/programm-data/files.txt`, 'utf8', (err, data) => {
                 let arrayOfStrData = data.split('\n');
                 arrayOfStrData.map(str => {
                     str = str.split(':');
@@ -118,7 +119,7 @@ module.exports.descriptionDisplayer = (argument) => {
               , colWidths: [20, 100]
             });
 
-            fs.readFile('./src/programm-data/folders.txt', 'utf8', (err, data) => {
+            fs.readFile(`${programPath}/programm-data/folders.txt`, 'utf8', (err, data) => {
                 let arrayOfStrData = data.split('\n');
                 arrayOfStrData.map(str => {
                     str = str.split(':');
@@ -152,7 +153,7 @@ module.exports.descriptionDisplayer = (argument) => {
               colWidths: [20, 100]
         });
     
-        fs.readFile('./src/programm-data/projects.txt', 'utf8', (err, data) => {
+        fs.readFile(`${programPath}/programm-data/projects.txt`, 'utf8', (err, data) => {
             let arrayOfStrData = data.split('\n');
             arrayOfStrData.map(str => {
                 str = str.split(':');
