@@ -11,8 +11,12 @@ const { init, generate, descriptionManager, descriptionDisplayer} = require('../
 
 program
   .name('npx-proj')
-  .description('Node.js project-structure manager built on top of commander.js, developed by pacifiquem@github.com')
-  .version(`\x1b[1mv${require('../package.json').version}\x1b[0m`, '-v, --version', 'Output the current version.');
+  .description('Node.js project-structure manager, developed by pacifiquem@github.com \n\n')
+  .usage("command [options]")
+  .version(`\x1b[1mv${require('../package.json').version}\x1b[0m`, '-v, --version', 'Output the current version.')
+  .helpOption('-h, --help', 'Output usage information.');
+
+
   program.command('init')
   .description('Command to initialize the project .')
   .argument('<string>', 'name of your project')
