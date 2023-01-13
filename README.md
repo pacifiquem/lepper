@@ -20,7 +20,6 @@ project structure manager .
 ```
 - #### Generating file or folder
 ```js
-    npx-proj generate -fo <foldername> //for folder
     npx-proj generate <foldername> -fi <filename> //for files
 ```
 - ### Adding discription to file or folder
