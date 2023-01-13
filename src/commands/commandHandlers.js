@@ -4,7 +4,7 @@ const fs = require('fs');
 const Table = require('cli-table');
 const processDirectory = process.cwd();
 
-
+//function for initializing project
 module.exports.init = (projName, folders, directory) => {
     if(folders != undefined && directory != undefined) {
 
@@ -20,7 +20,7 @@ module.exports.init = (projName, folders, directory) => {
     }
 }
 
-
+// function for generating file or folder
 module.exports.generate = (files, directory) => {
     if(files != undefined && directory != undefined) {
 
@@ -35,6 +35,7 @@ module.exports.generate = (files, directory) => {
     }
 }
 
+//function for adding description to project or folder or even file
 module.exports.descriptionManager = (argument) => {
 
     if(argument.hasOwnProperty('file')) {
@@ -70,7 +71,7 @@ module.exports.descriptionManager = (argument) => {
 
 }
 
-
+//function for displaying description of project or folder or even file
 module.exports.descriptionDisplayer = (argument) => {
     if(argument.hasOwnProperty('file')) {
         const fileName = argument.file;
