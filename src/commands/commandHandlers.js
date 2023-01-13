@@ -85,14 +85,18 @@ module.exports.descriptionDisplayer = (argument) => {
             });
 
             fs.readFile(`${programPath}/programm-data/files.txt`, 'utf8', (err, data) => {
-                let arrayOfStrData = data.split('\n');
-                arrayOfStrData.map(str => {
-                    str = str.split(':');
-                    str[1] = str[1].replace('\r', '');
-                    if(str[0] == fileName) {
-                        table.push(str);
-                    }
-                });
+                if(data != null && data != undefined) {
+                    let arrayOfStrData = data.split('\n');
+                    arrayOfStrData.map(str => {
+                        str = str.split(':');
+                        str[1] = str[1].replace('\r', '');
+                        if(str[0] === fileName) {
+                            table.push(str);
+                        }
+                    });
+                }else {
+                    console.log(`description not found .`);
+                }
             });
 
             setTimeout(() => {
@@ -120,14 +124,18 @@ module.exports.descriptionDisplayer = (argument) => {
             });
 
             fs.readFile(`${programPath}/programm-data/folders.txt`, 'utf8', (err, data) => {
-                let arrayOfStrData = data.split('\n');
-                arrayOfStrData.map(str => {
-                    str = str.split(':');
-                    str[1] = str[1].replace('\r', '');
-                    if(str[0] === folderName) {
-                        table.push(str);
-                    }
-                });
+                if(data != null && data != undefined) {
+                    let arrayOfStrData = data.split('\n');
+                    arrayOfStrData.map(str => {
+                        str = str.split(':');
+                        str[1] = str[1].replace('\r', '');
+                        if(str[0] === folderName) {
+                            table.push(str);
+                        }
+                    });
+                }else {
+                    console.log(`description not found .`);
+                }
             });
 
             setTimeout(() => {
@@ -154,14 +162,18 @@ module.exports.descriptionDisplayer = (argument) => {
         });
     
         fs.readFile(`${programPath}/programm-data/projects.txt`, 'utf8', (err, data) => {
-            let arrayOfStrData = data.split('\n');
-            arrayOfStrData.map(str => {
-                str = str.split(':');
-                str[1] = str[1].replace('\r', '');
-                if(str[0] == projectName) {
-                    table.push(str);
-                }
-            });
+            if(data != null && data != undefined) {
+                let arrayOfStrData = data.split('\n');
+                arrayOfStrData.map(str => {
+                    str = str.split(':');
+                    str[1] = str[1].replace('\r', '');
+                    if(str[0] === projectName) {
+                        table.push(str);
+                    }
+                });
+            }else {
+                console.log(`description not found .`);
+            }
         });
     
         setTimeout(() => {
