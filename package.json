@@ -4,7 +4,7 @@
   "description": "nodejs project-structure manager .",
   "main": "index.js",
   "bin": {
-    "npx-proj": "/bin/npx-proj.js"
+    "npx-proj": "/bin/npx-proj.ts"
   },
   "scripts": {
     "test": "npx-proj --version"
@@ -23,7 +23,9 @@
     "git",
     "github",
     "management",
-    "pacifiquem"
+    "pacifiquem",
+    "project structure",
+    "structure"
   ],
   "author": "pacifiquem@github.com",
   "license": "ISC",
@@ -35,5 +37,9 @@
     "cli-table": "^0.3.11",
     "commander": "^9.5.0",
     "inquirer": "^7.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.18",
+    "typescript": "^4.4.3"
   }
 }
