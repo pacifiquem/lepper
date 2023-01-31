@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import { Command } from 'commander';
-import { cwd } from 'process';
-import path from "path";
+const  { Command }  = require('commander');
+const { cwd } = require('process');
+const  path  = require("path");
 
 const program = new Command();
 
