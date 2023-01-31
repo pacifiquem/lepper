@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
+import { Command } from 'commander';
+import { cwd } from 'process';
+import path from "path";
 
-const { Command } = require('commander');
 const program = new Command();
-const path = require('path');
-const { cwd } = require('process');
 
 //commandHandlers
-const { init, generate, descriptionManager, descriptionDisplayer } = require('../src/commands/commandHandlers');
+import { init, generate, descriptionManager, descriptionDisplayer } from '../src/commands/commandHandlers';
 
 program
   .name('npx-proj')
@@ -44,7 +44,7 @@ program.command('add-description')
   .option('-fo, --folder <string>', 'folder you want to add description to ?')
   .option('-fi, --file <string>', 'file you want to add description to ?')
   .option('-m, --message <string>', 'message you want to add to your description ?')
-  .action((argument: string, options: any) => {
+  .action((argument: any, options: any) => {
     descriptionManager(argument);
   });
 
@@ -56,7 +56,5 @@ program.command('describe')
   .action((argument: string, options: any) => {
     descriptionDisplayer(argument);
   });
-
-
 
 program.parse();

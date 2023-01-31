@@ -1,5 +1,6 @@
 //packages
-// const path = require('path');
+import path from "path";
+import { cwd } from "process";
 const fs = require('fs');
 const Table = require('cli-table');
 const processDirectory = process.cwd();
@@ -7,7 +8,7 @@ const programPath = `${path.join(__dirname, '..')}`;
 
 
 //function for initializing project
-module.exports.init = (projName: string, folders: string[], directory: string) => {
+export const init = (projName: string, folders: string[], directory: string) => {
     if (folders != undefined && directory != undefined) {
 
         //remove duplicates
@@ -23,7 +24,7 @@ module.exports.init = (projName: string, folders: string[], directory: string) =
 }
 
 // function for generating file or folder
-module.exports.generate = (files: string[], directory: string) => {
+export const generate = (files: string[], directory: string) => {
     if (files != undefined && directory != undefined) {
 
         //removing duplicates
@@ -38,7 +39,7 @@ module.exports.generate = (files: string[], directory: string) => {
 }
 
 //function for adding description to project or folder or even file
-module.exports.descriptionManager = (argument: { file: string, message: string, folder: string, project: string }) => {
+export const descriptionManager = (argument: { file: string, message: string, folder: string, project: string }) => {
 
     if (argument.hasOwnProperty('file')) {
         const fileName = argument.file;
@@ -74,7 +75,7 @@ module.exports.descriptionManager = (argument: { file: string, message: string, 
 }
 
 //function for displaying description of project or folder or even file
-module.exports.descriptionDisplayer = (argument: any) => {
+export const descriptionDisplayer = (argument: any) => {
     if (argument.hasOwnProperty('file')) {
         const fileName = argument.file;
         const filesInDirectory = fs.readdirSync(processDirectory);
