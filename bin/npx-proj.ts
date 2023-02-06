@@ -7,12 +7,12 @@ const path = require("path");
 const program = new Command();
 
 //commandHandlers
-import {
+const {
   init,
   generate,
   descriptionManager,
   descriptionDisplayer,
-} from "../src/commands/commandHandlers";
+} = require("../src/commands/commandHandlers");
 
 program
   .name("npx-proj")

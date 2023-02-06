@@ -142,6 +142,7 @@ export const descriptionDisplayer = (argument: any) => {
   }
 
   if (argument.hasOwnProperty("folder")) {
+    console.log("run");
     const folderName = argument.folder;
     const foldersInDirectory = fs.readdirSync(processDirectory);
 
