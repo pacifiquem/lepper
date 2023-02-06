@@ -49,4 +49,8 @@ project structure manager .
 
   - I'd really appreciate it if you'd leave a star on [the repo](https://github.com/pacifiquem) .
   - you can also [Buy me a coffe](https://buymeacoffee.com/pacifiquem) 😋 .
+  
+  # copyright
+  
+  Copyright [@pacifiquem](https://github.com/pacifiquem) 2023 - Present .
 
