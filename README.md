@@ -22,13 +22,13 @@ project structure manager .
 ```js
     npx-proj generate <foldername> -fi <filename> //for files
 ```
-- ### Adding discription to file or folder
+- ### Adding description to file or folder
 ```js
-    npx-proj add-description -p <projectname>  -m "discription" //for projects
-    npx-proj add-description -fo <foldername>  -m "discription" //for folders
-    npx-proj add-description -fi <filename>  -m "discription" //for files
+    npx-proj add-description -p <projectname>  -m "description" //for projects
+    npx-proj add-description -fo <foldername>  -m "description" //for folders
+    npx-proj add-description -fi <filename>  -m "description" //for files
 ```
-- #### Getting discription .
+- #### Getting description .
 ```js
     npx-proj describe -p <projectname> //for projects
     npx-proj describe -fo <foldername> //for folders
@@ -39,7 +39,7 @@ project structure manager .
 
 - Initializing projects easier with ordered folders .
 - Makes generating files easier .
-- Saving discription of projects, folders and files you've created .
+- Saving description of projects, folders and files you've created .
 
 # Contribution
  
