@@ -18,3 +18,10 @@ module.exports.FileNotFoundErrror = class FileNotFoundErrror extends Error {
         this.name =   "FileNotFoundError";
     }
 }
+
+module.exports.FolderNotFoundErrror = class FolderNotFoundErrror extends Error {
+    constructor(missing_folder: string) {
+        super(`MissingFolder: ${missing_folder}`);
+        this.name =   "FolderNotFoundError";
+    }
+}
