@@ -43,7 +43,11 @@ project structure manager .
 
 # Contribution
  
- You are free to fork and modify [this project](https://github.com/pacifiquem) to you liking .
+ Refer to [Contributing.md](https://github.com/pacifiquem/npx-proj/blob/main/CONTRIBUTING.md).
+
+# Security
+
+Refer to [Security.md](https://github.com/pacifiquem/npx-proj/blob/main/SECURITY.md).
 
  # Support
 
