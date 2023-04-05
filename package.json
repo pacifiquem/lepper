@@ -18,10 +18,10 @@
     "type": "git",
     "url": "git+https://github.com/pacifiquem/npx-proj.git"
   },
-  "author":{
-    "name":"Murangwa Pacifique",
-    "email":"pacifiquemurangwa001@gmail.com",
-    "url":"https://github.com/pacifiquem"
+  "author": {
+    "name": "Murangwa Pacifique",
+    "email": "pacifiquemurangwa001@gmail.com",
+    "url": "https://github.com/pacifiquem"
   },
   "keywords": [
     "Backend",
@@ -37,7 +37,6 @@
     "project structure",
     "structure"
   ],
-  "author": "pacifiquem@github.com",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/pacifiquem/npx-proj/issues"
