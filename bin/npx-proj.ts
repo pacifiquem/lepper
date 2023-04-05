@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
 
-const { Command } = require('commander');
+import { Command } from "commander"
+import path from "path"
+import { cwd }  from "process";
+
 const program = new Command();
-const path = require('path');
-const { cwd } = require('process');
 
 //commandHandlers
 const { init, generate, descriptionManager, descriptionDisplayer } = require('../src/commands/commandHandlers');

@@ -1,7 +1,8 @@
 //packages
-// const path = require('path');
-const fs = require('fs');
-const Table = require('cli-table');
+
+import path from "path";
+import fs from 'fs'
+import Table  from "cli-table";
 const processDirectory = process.cwd();
 const programPath = `${path.join(__dirname, '..')}`;
 
