@@ -14,6 +14,10 @@
     "type": "git",
     "url": "git+https://github.com/pacifiquem/npx-proj.git"
   },
+  "author":{
+    "name":"Murangwa Pacifique",
+    "url":"https://github.com/pacifiquem"
+  },
   "keywords": [
     "Backend",
     "Frontend",
@@ -41,6 +45,10 @@
   },
   "devDependencies": {
     "@types/node": "^18.11.18",
-    "typescript": "^4.4.3"
+    "typescript": "^4.4.3",
+    "@typescript-eslint/eslint-plugin": "^5.48.0",
+    "@typescript-eslint/parser": "^5.48.0",
+    "eslint": "^8.31.0",
+    "eslint-plugin-prettier": "^4.2.1",
   }
 }
