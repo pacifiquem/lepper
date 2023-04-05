@@ -6,6 +6,9 @@
   "bin": {
     "npx-proj": "/bin/npx-proj.ts"
   },
+  "engines": {
+    "node": ">=12.0.0"
+  },
   "scripts": {
     "test": "npx-proj --version",
     "lint": "npx eslint  --ext .ts --fix",
