@@ -167,7 +167,7 @@ export const descriptionDisplayer = (argument: {
   ) {
     const projectName = argument.project;
     const projectsInDirectory = fs.readdirSync(
-      `${programPath}/program-data/projects`
+      `${programPath}/program-data/projects.txt`
     );
   } else if (
     argument.hasOwnProperty("project") &&
@@ -175,7 +175,7 @@ export const descriptionDisplayer = (argument: {
   ) {
     const projectName = argument.project;
     const projectsInDirectory = fs.readdirSync(
-      `${programPath}/program-data/projects`
+      `${programPath}/program-data/projects.txt`
     );
     if (projectsInDirectory.includes(projectName)) {
       const table = new Table({
@@ -183,7 +183,7 @@ export const descriptionDisplayer = (argument: {
         colWidths: [20, 100],
       });
       fs.readFile(
-        `${programPath}/program-data/projects/${projectName}/project.json`,
+        `${programPath}/program-data/projects.txt`,
         "utf8",
         (err: Error | null, data: string | Buffer) => {
           if (err) {
@@ -198,7 +198,7 @@ export const descriptionDisplayer = (argument: {
       );
     } else {
       console.log(
-        `Project ${projectName} not found in ${programPath}/program-data/projects`
+        `Project ${projectName} not found in ${programPath}/program-data/projects.txt`
       );
     }
   } else {
