@@ -13,7 +13,8 @@
   "scripts": {
     "test": "npx-proj --version",
     "lint": "npx eslint  --ext .ts --fix",
-    "build": "tsc"
+    "build": "tsc",
+    "prepare": "husky install"
   },
   "repository": {
     "type": "git",
@@ -55,6 +56,7 @@
     "@typescript-eslint/parser": "^5.48.0",
     "eslint": "^8.31.0",
     "eslint-plugin-prettier": "^4.2.1",
+    "husky": "^8.0.3",
     "typescript": "^4.9.5"
   }
 }
