@@ -4,17 +4,19 @@
 import { Command } from "commander"
 import path from "path"
 import { cwd }  from "process";
+import pkg from '../package.json' assert {type: 'json'};
+
+const version = pkg.version;
 
 const program = new Command();
-
 //commandHandlers
-const { init, generate, descriptionManager, descriptionDisplayer } = require('../src/commands/commandHandlers');
+import { init, generate, descriptionManager, descriptionDisplayer } from '../src/commands/commandHandlers.js'
 
 program
   .name('npx-proj')
   .description('Node.js project-structure manager, developed by pacifiquem@github.com \n\n')
   .usage("command [options]")
-  .version(`\x1b[1mv${require('../package.json').version}\x1b[0m`, '-v, --version', 'Output the current version.')
+  .version(`\x1b[1mv${version}\x1b[0m`, '-v, --version', 'Output the current version.')
   .helpOption('-h, --help', 'Output usage information.');
 
 
@@ -45,7 +47,7 @@ program.command('add-description')
   .option('-fo, --folder <string>', 'folder you want to add description to ?')
   .option('-fi, --file <string>', 'file you want to add description to ?')
   .option('-m, --message <string>', 'message you want to add to your description ?')
-  .action((argument: string, options: any) => {
+  .action((argument: any, options: any) => {
     descriptionManager(argument);
   });
 
@@ -54,7 +56,7 @@ program.command('describe')
   .option('-p, --project <string>', 'project you want to display description of ?')
   .option('-fo, --folder <string>', 'folder you want to display description of ?')
   .option('-fi, --file <string>', 'file you want to display description of ?')
-  .action((argument: string, options: any) => {
+  .action((argument: any, options: any) => {
     descriptionDisplayer(argument);
   });
 
