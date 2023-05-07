@@ -2,7 +2,7 @@
   "name": "npx-proj",
   "version": "2.0.9",
   "description": "nodejs project-structure manager .",
-  "main": "index.js",
+  "main": "/dist/index.js",
   "bin": {
     "npx-proj": "/dist/bin/npx-proj.js"
   },
@@ -12,7 +12,8 @@
   "type": "module",
   "scripts": {
     "test": "npx-proj --version",
-    "lint": "npx eslint  --ext .ts --fix"
+    "lint": "npx eslint  --ext .ts --fix",
+    "build": "tsc"
   },
   "repository": {
     "type": "git",
