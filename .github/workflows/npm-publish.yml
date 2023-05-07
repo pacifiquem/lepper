@@ -3,7 +3,7 @@ name: npx-proj
 on:
   push:
     branches:
-        - npm
+        - main
 jobs:
   build:
     runs-on: ubuntu-latest
