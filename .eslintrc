@@ -11,8 +11,10 @@
     },
   
     "rules": {
-      "semi": 0 ,
+      "semi": 1 ,
       "trailingComma": "off",
-      "singleQuote": "off"
+      "singleQuote": "on",
+      "indent": ["error", 4],
+      "no-mixed-spaces-and-tabs": "error"
     }
   }
