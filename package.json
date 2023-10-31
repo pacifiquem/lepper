@@ -1,0 +1,44 @@
+{
+  "name": "lepper",
+  "description": "Help you understand project's structure easly.",
+  "version": "0.0.0",
+  "main": "src/index.ts",
+  "module": "module",
+  "type": "module",
+  "scripts": {
+    "test": "vitest",
+    "format": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\"",
+    "lint": "eslint --fix --ext .js,.ts",
+    "prepare": "husky install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pacifiquem/lepper.git"
+  },
+  "keywords": [
+    "lepper",
+    "project",
+    "project-management",
+    "collaboration",
+    "git",
+    "describe",
+    "project-structure"
+  ],
+  "author": "pacifiquem@github.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/pacifiquem/lepper/issues"
+  },
+  "homepage": "https://github.com/pacifiquem/lepper#readme",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^6.9.1",
+    "@typescript-eslint/parser": "^6.9.1",
+    "eslint": "^8.52.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-vitest": "^0.3.8",
+    "husky": "^8.0.3",
+    "prettier": "^3.0.3",
+    "typescript": "^5.2.2",
+    "vitest": "^0.34.6"
+  }
+}
