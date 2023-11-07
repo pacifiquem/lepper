@@ -1,56 +1,43 @@
-# npx-proj
-![npm](https://img.shields.io/npm/v/npx-proj.svg?style=flat-square)
-![NPM Downloads](https://img.shields.io/npm/dw/npx-proj?style=flat-square)
-<br>
+# Lepper
 
-project structure manager .
+Understand any project's structure easily.
 
-# Installation
+## Description
+
+Lepper can be used by big projects to let people understand how the project is structured.
+With a few commands you can set/get a berief description of a project's structure and also find part of your project which is not described.
+
+## Installation
 
 ```bash
-    npm i -g npx-proj
+    npm install lepper | npm i lepper
 ```
 
-# Usage
+## Usage
 
-- #### Initializing project
-```bash
-    npx-proj init <project-name> -fo <list of folders>
-    //you can add more than one folder name .
-```
-- #### Generating file or folder
-```bash
-    npx-proj generate <foldername> -fi <filename> //for files
-```
-- ### Adding discription to file or folder
-```bash
-    npx-proj add-description -p <projectname>  -m "discription" //for projects
-    npx-proj add-description -fo <foldername>  -m "discription" //for folders
-    npx-proj add-description -fi <filename>  -m "discription" //for files
-```
-- #### Getting discription .
-```bash
-    npx-proj describe -p <projectname> //for projects
-    npx-proj describe -fo <foldername> //for folders
-    npx-proj describe -fi <filename> //for files
-```
+We offer 4 commands that can help to achieve what's described above:
 
-# Advantages of using npx-proj
+- ``lepper init`` : Initialize *lepper* in your project.
+- ``lepper profile`` : Set description to a directory.
+- ``lepper describe`` : Provides brief description of the project's directories.
+- ``lepper verify`` : Recursively checks and list undescribed directories.
 
-- Initializing projects easier with ordered folders .
-- Makes generating files easier .
-- Saving discription of projects, folders and files you've created .
+## Contributing
 
-# Contribution
- 
- Refer to [Contributing.md](https://github.com/pacifiquem/npx-proj/blob/main/CONTRIBUTING.md).
+Thanks for considering contributing to this project.
+These are steps to contributing:
 
-# Security
+- Clone this repository.
+- Run ``npm describe`` in root folder your project's clone. Just to understand how the project is structured.
+- Apply your logic
+- Open a pull-request, we'll review and get back to you soon.
 
-Refer to [Security.md](https://github.com/pacifiquem/npx-proj/blob/main/SECURITY.md).
+Also issues are welcomed.
 
- # Support
+## License
 
-  - I'd really appreciate it if you'd leave a star on [the repo](https://github.com/pacifiquem) .
-  - you can also [Buy me a coffe](https://buymeacoffee.com/pacifiquem) 😋 .
+This project is under [MIT](https://github.com/pacifiquem/lepper/blob/main/LICENSE).
 
+## Maintainers
+
+It was written by [@pacifiquem](https://github.com/pacifiquem) and and he's the current maintainer.
