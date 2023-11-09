@@ -5,12 +5,12 @@ Understand any project's structure easily.
 ## Description
 
 Lepper can be used by big projects to let people understand how the project is structured.
-With a few commands you can set/get a berief description of a project's structure and also find part of your project which is not described.
+With a few commands you can set/get a brief description of a project's structure and also find part of your project which is not described.
 
 ## Installation
 
 ```bash
-    npm install lepper | npm i lepper
+    npm install lepper
 ```
 
 ## Usage
@@ -40,4 +40,4 @@ This project is under [MIT](https://github.com/pacifiquem/lepper/blob/main/LICEN
 
 ## Maintainers
 
-It was written by [@pacifiquem](https://github.com/pacifiquem) and and he's the current maintainer.
+It was written by [@pacifiquem](https://github.com/pacifiquem) and he's the current maintainer.
