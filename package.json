@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "main": "src/index.ts",
   "bin": {
-    "lepper": "./dist/bin/lepper.js"
+    "lepper": "./compiled/bin/lepper.js"
   },
   "scripts": {
     "format": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\"",
