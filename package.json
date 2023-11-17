@@ -6,12 +6,11 @@
   "bin": {
     "lepper": "./dist/bin/lepper.js"
   },
-  "module": "module",
-  "type": "module",
   "scripts": {
     "format": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\"",
     "lint": "eslint --fix --ext .js,.ts",
-    "build": "tsc",
+    "compile": "tsc --pretty && babel --extensions '.ts' src -d compiled",
+    "build": "yarn compile",
     "prepare": "husky install"
   },
   "repository": {
@@ -34,6 +33,10 @@
   },
   "homepage": "https://github.com/pacifiquem/lepper#readme",
   "devDependencies": {
+    "@babel/cli": "^7.23.0",
+    "@babel/core": "^7.23.2",
+    "@babel/preset-env": "^7.23.2",
+    "@babel/preset-typescript": "^7.23.2",
     "@types/inquirer": "^9.0.6",
     "@typescript-eslint/eslint-plugin": "^6.9.1",
     "@typescript-eslint/parser": "^6.9.1",
@@ -45,8 +48,8 @@
     "typescript": "^5.2.2"
   },
   "dependencies": {
-    "chalk": "^5.3.0",
+    "chalk": "4.2.1",
     "commander": "^11.1.0",
-    "inquirer": "^9.2.11"
+    "inquirer": "8.2.6"
   }
 }
