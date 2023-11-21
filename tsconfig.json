@@ -5,8 +5,10 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "emitDeclarationOnly": true,
-    "declaration": true,
+    "outDir": "./compiled",
+    "noEmit": true,
+    // "emitDeclarationOnly": true,
+    // "declaration": true,
     "sourceMap": true
   },
   "include": ["./**/*.ts"],

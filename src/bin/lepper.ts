@@ -45,7 +45,6 @@ program
 program
   .command('describe')
   .description("Log descriptions of the project' struture")
-  .option('-f, --folder <path>', 'Specify the folder to describe')
   .action(() => describeCommand());
 
 program.parse(process.argv);
