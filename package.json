@@ -1,7 +1,7 @@
 {
   "name": "lepper",
   "description": "Help you understand project's structure easly.",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "bin": {
     "lepper": "./compiled/bin/lepper.js"
   },
