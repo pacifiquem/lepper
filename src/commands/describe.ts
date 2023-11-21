@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import inquirer from 'inquirer';
 import chalk from 'chalk';
 import { Log } from '../lib/helper';
 
@@ -21,23 +20,14 @@ const describeCommand = () => {
     ? JSON.parse(fs.readFileSync(infoFilePath, 'utf-8'))
     : {};
 
-  // Prompt the user for a project description
-  inquirer
-    .prompt([
-      {
-        type: 'input',
-        name: 'description',
-        message: chalk.cyan('Enter a project description:'),
-      },
-    ])
-    .then((answers) => {
-      // Set the project description in the data
-      lepperData.description = answers.description;
-
-      // Update _info.json with the new data
-      fs.writeFileSync(infoFilePath, JSON.stringify(lepperData, null, 2));
-      Log(chalk.green('Project description set successfully.'));
-    });
+  // Lost? don't worry I'm just making data perfect for console.table!!!
+  const tableData = Object.entries(lepperData.directories).map(
+    ([directory, description]) => ({
+      Directories: directory,
+      Description: description,
+    }),
+  );
+  console.table(tableData);
 };
 
 export default describeCommand;

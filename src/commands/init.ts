@@ -25,6 +25,11 @@ const initCommand = () => {
           },
           {
             type: 'input',
+            name: 'description',
+            message: chalk.cyan('Enter a project description:'),
+          },
+          {
+            type: 'input',
             name: 'version',
             message: chalk.cyan('Enter the project version:'),
           },

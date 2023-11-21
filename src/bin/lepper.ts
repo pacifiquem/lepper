@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import pkg from '../package.json';
+import pkg from '../../package.json';
 import process from 'process';
 
 // Command Handlers
@@ -33,7 +33,7 @@ program
   .description('Set description to a directory.')
   .option('-f, --folder <path>', 'Specify folder to set description for')
   .action((cmd) => {
-    const options = cmd.opts();
+    const options = cmd;
     profileCommand(options.folder);
   });
 
@@ -44,8 +44,7 @@ program
 
 program
   .command('describe')
-  .description('Provide project description')
-  .option('-f, --folder <path>', 'Specify the folder to describe')
+  .description("Log descriptions of the project' struture")
   .action(() => describeCommand());
 
 program.parse(process.argv);

@@ -41,3 +41,4 @@ This project is under [MIT](https://github.com/pacifiquem/lepper/blob/main/LICEN
 ## Maintainers
 
 It was written by [@pacifiquem](https://github.com/pacifiquem) and he's the current maintainer.
+If you want to contribute please refer to [CONTRIBUTING.md](https://github.com/pacifiquem/lepper/blob/main/CONTRIBUTING.md)

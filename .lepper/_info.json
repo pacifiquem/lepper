@@ -1,0 +1,13 @@
+{
+  "name": "lepper",
+  "version": "0.0.1",
+  "author": "MURANGWA Pacifique",
+  "directories": {
+    "./compiled": "Once you run ( yarn compile ) this folder will contain built javascript source codes",
+    "./src": "Directory which contains lepper's source codes",
+    "./src/bin": "Directory which contains lepper's binaries",
+    "./src/commands": "Directory which contains lepper's command handlers",
+    "./src/lib": "Directory which contains lepper's shared libraries and packages",
+    "./tests": "Directory which contains lepper's tests"
+  }
+}

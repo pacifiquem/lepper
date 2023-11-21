@@ -1,22 +1,16 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "outDir": "./dist",
-    "rootDir": "./",
     "strict": true,
     "noImplicitAny": true,
     "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "moduleResolution": "Node",
-    "allowJs": true,
-    "declaration": true,
+    "outDir": "./compiled",
+    "noEmit": true,
+    // "emitDeclarationOnly": true,
+    // "declaration": true,
     "sourceMap": true
   },
-  "include": [
-    "./**/*.ts" // Adjust the path to your TypeScript source files
-  ],
+  "include": ["./**/*.ts"],
   "exclude": ["node_modules"]
 }
