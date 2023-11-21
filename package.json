@@ -9,7 +9,9 @@
     "format": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\"",
     "lint": "eslint --fix --ext .js,.ts",
     "compile": "tsc --pretty && babel --extensions '.ts' src -d compiled",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "lepper:describe": "lepper describe",
+    "lepper:verify": "lepper verify"
   },
   "repository": {
     "type": "git",
@@ -42,6 +44,7 @@
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-vitest": "^0.3.8",
     "husky": "^8.0.3",
+    "lepper": "^0.0.1",
     "prettier": "^3.0.3",
     "typescript": "^5.2.2"
   },
