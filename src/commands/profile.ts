@@ -4,7 +4,7 @@ import inquirer from 'inquirer';
 import chalk from 'chalk';
 import { Log } from '../lib/helper';
 
-const profileCommand = (folderDir: string) => {
+const profileCommand = async (folderDir: string) => {
   const lepperDirectory = path.join(process.cwd(), '.lepper');
   const infoFilePath = path.join(lepperDirectory, '_info.json');
 
@@ -20,6 +20,21 @@ const profileCommand = (folderDir: string) => {
   const lepperData = fs.existsSync(infoFilePath)
     ? JSON.parse(fs.readFileSync(infoFilePath, 'utf-8'))
     : {};
+
+  if (folderDir == undefined) {
+    // If no folder is provided, ask the user to select a folder
+    const answers = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'directory',
+        message: chalk.cyan(`Please specify the directory: `),
+      },
+    ]);
+    answers.directory.length !== 0
+      ? (folderDir = await answers.directory)
+      : console.error(chalk.red.bold("Directory can't be empty")),
+      process.exit(1);
+  }
 
   // Prompt the user for a description
   inquirer
