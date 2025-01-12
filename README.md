@@ -10,7 +10,7 @@ With a few commands you can set/get a brief description of a project's structure
 ## Installation
 
 ```bash
-    npm install lepper
+    npm install --save-dev lepper
 ```
 
 ## Usage
