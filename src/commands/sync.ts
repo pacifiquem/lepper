@@ -13,7 +13,7 @@ const syncCommand = (cwd: string = projectCwd()): void => {
   }
   if (result.pushed) {
     parts.push('pushed');
-  } else {
+  } else if (!result.pulled) {
     parts.push('local only');
   }
   Log(chalk.green(`Synced lepper notes (${parts.join(', ')}).`));

@@ -22,7 +22,7 @@ store, so agents on different worktrees share the same notes.
 - Each note is a content-addressed blob keyed by a SHA-256 **fingerprint**.
 - Updating a path keeps the previous fingerprint as `parent`, so notes are versioned.
 - Historical blobs are packed and gzipped when the loose object count grows.
-- `lepper sync` snapshots the store to `refs/lepper/notes` and pushes that ref so other clones can share the same memory.
+- `lepper sync` fetches `refs/lepper/notes`, merges those notes with this clone, and pushes a descendant of that ref so a clone can publish its own notes on top of what it received.
 
 ## MCP (npx)
 
@@ -49,7 +49,7 @@ repo or worktree path.
 Full client configs, tools, worktrees, and troubleshooting:
 [docs/mcp.md](docs/mcp.md).
 
-Tools: `record`, `map`, `find`, `todo`.
+Tools: `record`, `map`, `find`, `todo`, `sync`.
 
 ## CLI
 

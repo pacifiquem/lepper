@@ -1,3 +1,4 @@
+import { documentFrequencies } from './bm25';
 import { CliError } from './errors';
 import { fingerprint } from './fingerprint';
 import { normalizeProjectPath } from './paths';
@@ -12,7 +13,14 @@ import {
   writeSearchIndex,
 } from './store';
 import { excerpt, titleFrom, tokenize, termFrequency } from './text';
-import { NoteBlob, NoteSummary } from './types';
+import {
+  NoteBlob,
+  NoteSummary,
+  SEARCH_ANALYZER,
+  SearchDoc,
+  SearchIndex,
+  STORE_VERSION,
+} from './types';
 
 export interface RecordInput {
   path: string;
@@ -35,25 +43,79 @@ function summaryFrom(note: NoteBlob): NoteSummary {
   };
 }
 
-function indexNote(store: Store, note: NoteBlob): void {
-  const search = readSearchIndex(store);
-  const tokens = [
+function searchTokens(note: NoteBlob): string[] {
+  return [
     ...tokenize(note.body),
     ...tokenize(note.title),
     ...tokenize(note.path),
     ...note.tags.flatMap((tag) => tokenize(tag)),
   ];
-  const tf = termFrequency(tokens);
+}
 
-  if (search.docs[note.fingerprint]) {
-    return;
+function noteSearchDoc(note: NoteBlob): SearchDoc {
+  const tokens = searchTokens(note);
+  return {
+    path: note.path,
+    tf: termFrequency(tokens),
+    length: tokens.length,
+  };
+}
+
+function isCurrentSearchIndex(
+  index: SearchIndex,
+  notes: NoteSummary[],
+): boolean {
+  if (index.analyzer !== SEARCH_ANALYZER) {
+    return false;
   }
 
-  search.docs[note.fingerprint] = { path: note.path, tf };
-  for (const token of Object.keys(tf)) {
-    search.df[token] = (search.df[token] || 0) + 1;
+  const docs = index.docs || {};
+  if (Object.keys(docs).length !== notes.length) {
+    return false;
   }
-  writeSearchIndex(store, search);
+
+  for (const note of notes) {
+    const doc = docs[note.fingerprint];
+    if (!doc || doc.path !== note.path || typeof doc.length !== 'number') {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+export function rebuildSearchIndex(
+  store: Store,
+  notes: NoteSummary[] = listNotes(store),
+): SearchIndex {
+  const docs: Record<string, SearchDoc> = {};
+  for (const summary of notes) {
+    const blob = readNoteBlob(store, summary.fingerprint);
+    if (!blob) {
+      continue;
+    }
+    docs[blob.fingerprint] = noteSearchDoc(blob);
+  }
+
+  const index: SearchIndex = {
+    version: STORE_VERSION,
+    analyzer: SEARCH_ANALYZER,
+    df: documentFrequencies(Object.values(docs)),
+    docs,
+  };
+  writeSearchIndex(store, index);
+  return index;
+}
+
+export function ensureSearchIndex(
+  store: Store,
+  notes: NoteSummary[] = listNotes(store),
+): SearchIndex {
+  const index = readSearchIndex(store);
+  if (isCurrentSearchIndex(index, notes)) {
+    return index;
+  }
+  return rebuildSearchIndex(store, notes);
 }
 
 export function recordNote(store: Store, input: RecordInput): NoteBlob {
@@ -100,7 +162,7 @@ export function recordNote(store: Store, input: RecordInput): NoteBlob {
   writeNoteBlob(store, note);
   index.notes[normalized] = summaryFrom(note);
   writeIndex(store, index);
-  indexNote(store, note);
+  rebuildSearchIndex(store);
   maybePack(store);
   return note;
 }
