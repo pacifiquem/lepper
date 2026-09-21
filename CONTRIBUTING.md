@@ -30,5 +30,5 @@ I use GitHub issues to track public bugs. Report a bug by [opening a new issue](
 - What actually happens
 - Notes (possibly including why you think this might be happening, or stuff you tried that didn't work)
 
-⚠️ Run ``yarn lepper:describe`` in order to get description of how folders are structured ⚠️
-⚠️ Also make sure that the command ``yarn lepper:verify`` shows no undescribed folder in case you've added new directories ⚠️
+⚠️ Run ``lepper map`` to read the project overview other agents have recorded. ⚠️
+⚠️ Record notes with ``lepper record <path> --note "..."`` when you add or learn a directory. ⚠️

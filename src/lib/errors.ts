@@ -14,7 +14,7 @@ export class CliError extends Error {
 }
 
 export const NOT_INITIALIZED =
-  'Lepper is not initialized. Please run "lepper init" first.';
+  'Lepper stores notes inside .git. Run this from a git repository.';
 
 export function isCancelError(error: unknown): boolean {
   if (!error || typeof error !== 'object') {
@@ -52,7 +52,7 @@ export function formatCliFailure(error: unknown): CliFailure {
 
   if (error instanceof SyntaxError) {
     return {
-      message: `Failed to read .lepper/_info.json: ${error.message}`,
+      message: error.message,
       exitCode: 1,
       alreadyPrinted: false,
     };
