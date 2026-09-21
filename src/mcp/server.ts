@@ -1,24 +1,46 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { withLepper } from '../lib/api';
+import { git, projectCwd } from '../lib/git';
 import { formatMap, projectMap } from '../lib/map';
 import { getNote, historyFor, recordNote } from '../lib/notes';
 import { findNotes } from '../lib/search';
-import { addTodo, completeTodo, listTodos, startTodo } from '../lib/todos';
-import { syncNotes } from '../lib/sync';
 import { normalizeProjectPath } from '../lib/paths';
-import { projectCwd } from '../lib/git';
+import { syncNotes } from '../lib/sync';
+import { addTodo, completeTodo, listTodos, startTodo } from '../lib/todos';
 import pkg from '../../package.json';
+
+const MODERN_PROTOCOL_VERSION = '2026-07-28';
+const LEGACY_PROTOCOL_VERSIONS = [
+  '2025-11-25',
+  '2025-06-18',
+  '2025-03-26',
+  '2024-11-05',
+  '2024-10-07',
+];
+const SUPPORTED_PROTOCOL_VERSIONS = [
+  MODERN_PROTOCOL_VERSION,
+  ...LEGACY_PROTOCOL_VERSIONS,
+];
+const INSTRUCTIONS =
+  'Record what you learn about this repository so later agents can find it. Use find and map before rereading code. Use sync after clone, and again after recording, to merge notes with other clones through refs/lepper/notes.';
 
 interface JsonRpcRequest {
   jsonrpc?: string;
   id?: string | number | null;
   method?: string;
   params?: Record<string, unknown>;
+  result?: unknown;
+  error?: unknown;
 }
 
 type ToolResult = {
   content: Array<{ type: 'text'; text: string }>;
   isError?: boolean;
 };
+
+type Framing = 'ndjson' | 'content-length';
 
 function textResult(value: unknown, isError = false): ToolResult {
   const text =
@@ -53,6 +75,13 @@ function tagsOf(params: Record<string, unknown> | undefined): string[] {
   }
   return [];
 }
+
+const readOnly = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+};
 
 const TOOLS = [
   {
@@ -95,6 +124,7 @@ const TOOLS = [
         },
       },
     },
+    annotations: readOnly,
   },
   {
     name: 'find',
@@ -109,6 +139,7 @@ const TOOLS = [
       },
       required: ['query'],
     },
+    annotations: readOnly,
   },
   {
     name: 'todo',
@@ -133,6 +164,22 @@ const TOOLS = [
         agent: { type: 'string', description: 'Optional agent name' },
       },
       required: ['action'],
+    },
+  },
+  {
+    name: 'sync',
+    description:
+      'Fetch refs/lepper/notes from origin, merge those notes with this clone, and push the result. Run this after clone and after recording notes other people should see.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      additionalProperties: false,
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
     },
   },
 ];
@@ -239,11 +286,24 @@ export function callTool(
   }
 }
 
+let outputFraming: Framing = 'ndjson';
+let framingLocked = false;
+let sessionModern = false;
+let clientRoots = false;
+let projectRoot: string | undefined;
+let requestSerial = 0;
+let rootsReady: Promise<void> = Promise.resolve();
+const pending = new Map<string, (result: unknown) => void>();
+
+function hasId(id: string | number | null | undefined): id is string | number {
+  return id !== undefined && id !== null;
+}
+
 function respond(
   id: string | number | null | undefined,
   result: unknown,
 ): void {
-  if (id === undefined) {
+  if (!hasId(id)) {
     return;
   }
   writeMessage({ jsonrpc: '2.0', id, result });
@@ -251,61 +311,302 @@ function respond(
 
 function respondError(
   id: string | number | null | undefined,
+  code: number,
   message: string,
+  data?: unknown,
 ): void {
-  if (id === undefined) {
+  if (!hasId(id)) {
     return;
   }
   writeMessage({
     jsonrpc: '2.0',
     id,
-    error: { code: -32000, message },
+    error: data === undefined ? { code, message } : { code, message, data },
   });
 }
 
 function writeMessage(message: unknown): void {
   const json = JSON.stringify(message);
-  const payload = Buffer.from(json, 'utf8');
-  process.stdout.write(`Content-Length: ${payload.length}\r\n\r\n`);
-  process.stdout.write(payload);
+  if (outputFraming === 'content-length') {
+    const payload = Buffer.from(json, 'utf8');
+    process.stdout.write(`Content-Length: ${payload.length}\r\n\r\n`);
+    process.stdout.write(payload);
+    return;
+  }
+  process.stdout.write(`${json}\n`);
 }
 
-function handle(message: JsonRpcRequest): void {
+function negotiateLegacy(requested: string): string {
+  if (
+    requested === MODERN_PROTOCOL_VERSION ||
+    LEGACY_PROTOCOL_VERSIONS.includes(requested)
+  ) {
+    return requested;
+  }
+  return LEGACY_PROTOCOL_VERSIONS[0];
+}
+
+function metaVersion(params: Record<string, unknown> | undefined): string {
+  const meta = params?._meta;
+  if (!meta || typeof meta !== 'object') {
+    return '';
+  }
+  const version = (meta as Record<string, unknown>)[
+    'io.modelcontextprotocol/protocolVersion'
+  ];
+  return typeof version === 'string' ? version : '';
+}
+
+function wantsModern(params: Record<string, unknown> | undefined): boolean {
+  const version = metaVersion(params);
+  if (version === MODERN_PROTOCOL_VERSION) {
+    sessionModern = true;
+    return true;
+  }
+  if (version && LEGACY_PROTOCOL_VERSIONS.includes(version)) {
+    return false;
+  }
+  return sessionModern;
+}
+
+function rejectUnsupported(
+  id: string | number | null | undefined,
+  params: Record<string, unknown>,
+): boolean {
+  const version = metaVersion(params);
+  if (
+    !version ||
+    version === MODERN_PROTOCOL_VERSION ||
+    LEGACY_PROTOCOL_VERSIONS.includes(version)
+  ) {
+    return false;
+  }
+  respondError(id, -32022, 'Unsupported protocol version', {
+    supported: SUPPORTED_PROTOCOL_VERSIONS,
+    requested: version,
+  });
+  return true;
+}
+
+function withResultType(
+  result: Record<string, unknown>,
+  modern: boolean,
+  cacheable = false,
+): Record<string, unknown> {
+  if (!modern) {
+    return result;
+  }
+  return {
+    ...result,
+    resultType: 'complete',
+    ...(cacheable ? { ttlMs: 3_600_000, cacheScope: 'public' as const } : {}),
+  };
+}
+
+function toolArguments(
+  params: Record<string, unknown>,
+): Record<string, unknown> {
+  const value = params.arguments;
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = JSON.parse(value) as unknown;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    return {};
+  }
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function toolCwd(): string {
+  if (process.env.LEPPER_ROOT && process.env.LEPPER_ROOT.trim()) {
+    return pathResolve(process.env.LEPPER_ROOT);
+  }
+  return projectRoot || process.cwd();
+}
+
+function pathResolve(input: string): string {
+  const resolved = path.resolve(input.trim());
+  try {
+    return fs.realpathSync(resolved);
+  } catch {
+    return resolved;
+  }
+}
+
+function applyRoots(result: unknown): void {
+  const roots = (result as { roots?: Array<{ uri?: string }> } | undefined)
+    ?.roots;
+  if (!Array.isArray(roots)) {
+    return;
+  }
+
+  const candidates: string[] = [];
+  for (const root of roots) {
+    if (!root?.uri) {
+      continue;
+    }
+    try {
+      candidates.push(fileURLToPath(root.uri));
+    } catch {
+      // Ignore roots that are not file URLs.
+    }
+  }
+
+  for (const candidate of candidates) {
+    if (git(candidate, ['rev-parse', '--show-toplevel']).status === 0) {
+      projectRoot = candidate;
+      return;
+    }
+  }
+  if (candidates[0]) {
+    projectRoot = candidates[0];
+  }
+}
+
+function requestRoots(): void {
+  if (sessionModern || !clientRoots || (process.env.LEPPER_ROOT || '').trim()) {
+    return;
+  }
+
+  rootsReady = new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(), 2000);
+    const id = ++requestSerial;
+    pending.set(String(id), (result) => {
+      clearTimeout(timer);
+      applyRoots(result);
+      resolve();
+    });
+    writeMessage({
+      jsonrpc: '2.0',
+      id,
+      method: 'roots/list',
+      params: {},
+    });
+  });
+}
+
+async function handle(message: JsonRpcRequest): Promise<void> {
+  if (message.method == null && hasId(message.id)) {
+    const waiter = pending.get(String(message.id));
+    if (waiter) {
+      pending.delete(String(message.id));
+      waiter(message.result);
+    }
+    return;
+  }
+
   const method = message.method || '';
   const id = message.id;
   const params = message.params || {};
+  const legacyHandshake =
+    method === 'initialize' ||
+    method === 'initialized' ||
+    method.startsWith('notifications/');
+  if (!legacyHandshake && rejectUnsupported(id, params)) {
+    return;
+  }
 
   if (method === 'initialize') {
+    const requested = str(params, 'protocolVersion');
+    const protocolVersion = negotiateLegacy(requested);
+    sessionModern = protocolVersion === MODERN_PROTOCOL_VERSION;
+    const capabilities = params.capabilities;
+    clientRoots = Boolean(
+      capabilities &&
+        typeof capabilities === 'object' &&
+        (capabilities as { roots?: unknown }).roots,
+    );
     respond(id, {
-      protocolVersion: '2024-11-05',
-      capabilities: { tools: {} },
+      protocolVersion,
+      capabilities: { tools: { listChanged: false } },
       serverInfo: { name: 'lepper', version: pkg.version },
+      instructions: INSTRUCTIONS,
+    });
+    return;
+  }
+
+  if (method === 'server/discover') {
+    sessionModern = true;
+    respond(id, {
+      resultType: 'complete',
+      supportedVersions: [MODERN_PROTOCOL_VERSION],
+      capabilities: { tools: {} },
+      instructions: INSTRUCTIONS,
+      ttlMs: 3_600_000,
+      cacheScope: 'public',
+      _meta: {
+        'io.modelcontextprotocol/serverInfo': {
+          name: 'lepper',
+          version: pkg.version,
+        },
+      },
     });
     return;
   }
 
   if (method === 'notifications/initialized' || method === 'initialized') {
+    requestRoots();
+    if (hasId(id)) {
+      respond(id, {});
+    }
+    return;
+  }
+
+  if (method === 'notifications/roots/list_changed') {
+    requestRoots();
     return;
   }
 
   if (method === 'ping') {
-    respond(id, {});
+    respond(id, withResultType({}, wantsModern(params)));
+    return;
+  }
+
+  if (method === 'logging/setLevel') {
+    respond(id, withResultType({}, wantsModern(params)));
     return;
   }
 
   if (method === 'tools/list') {
-    respond(id, { tools: TOOLS });
+    respond(id, withResultType({ tools: TOOLS }, wantsModern(params), true));
+    return;
+  }
+
+  if (method === 'resources/list') {
+    respond(id, withResultType({ resources: [] }, wantsModern(params), true));
+    return;
+  }
+
+  if (method === 'resources/templates/list') {
+    respond(
+      id,
+      withResultType({ resourceTemplates: [] }, wantsModern(params), true),
+    );
+    return;
+  }
+
+  if (method === 'prompts/list') {
+    respond(id, withResultType({ prompts: [] }, wantsModern(params), true));
     return;
   }
 
   if (method === 'tools/call') {
-    const name = str(params, 'name');
-    const args =
-      params.arguments && typeof params.arguments === 'object'
-        ? (params.arguments as Record<string, unknown>)
-        : {};
-    const result = callTool(name, args);
-    respond(id, result);
+    await rootsReady;
+    const modern = wantsModern(params);
+    try {
+      const result = callTool(
+        str(params, 'name'),
+        toolArguments(params),
+        toolCwd(),
+      );
+      respond(id, withResultType({ ...result }, modern));
+    } catch (error) {
+      const text = error instanceof Error ? error.message : String(error);
+      respond(id, withResultType({ ...textResult(text, true) }, modern));
+    }
     return;
   }
 
@@ -313,67 +614,158 @@ function handle(message: JsonRpcRequest): void {
     return;
   }
 
-  respondError(id, `Unknown method: ${method}`);
+  respondError(id, -32601, `Method not found: ${method}`);
 }
 
-function consume(buffer: Buffer): Buffer {
-  while (buffer.length > 0) {
-    const headerSep = buffer.indexOf('\r\n\r\n');
-    const asString = buffer.toString('utf8');
+interface Taken {
+  message: JsonRpcRequest;
+  framing: Framing;
+  rest: Buffer;
+}
 
-    if (
-      headerSep !== -1 &&
-      /content-length:/i.test(asString.slice(0, headerSep))
-    ) {
-      const header = buffer.slice(0, headerSep).toString('utf8');
-      const match = header.match(/content-length:\s*(\d+)/i);
-      if (!match) {
-        break;
-      }
-      const length = Number(match[1]);
-      const start = headerSep + 4;
-      if (buffer.length < start + length) {
-        break;
-      }
-      const body = buffer.slice(start, start + length).toString('utf8');
-      handle(JSON.parse(body) as JsonRpcRequest);
-      buffer = buffer.slice(start + length);
-      continue;
-    }
+function headerSplit(buffer: Buffer): { header: string; start: number } | null {
+  const crlf = buffer.indexOf('\r\n\r\n');
+  const lf = buffer.indexOf('\n\n');
+  if (crlf === -1 && lf === -1) {
+    return null;
+  }
+  if (crlf !== -1 && (lf === -1 || crlf <= lf)) {
+    return {
+      header: buffer.slice(0, crlf).toString('utf8'),
+      start: crlf + 4,
+    };
+  }
+  return {
+    header: buffer.slice(0, lf).toString('utf8'),
+    start: lf + 2,
+  };
+}
 
-    const nl = buffer.indexOf(0x0a);
-    if (nl === -1) {
-      break;
+function takeMessage(buffer: Buffer): Taken | null {
+  const preview = buffer
+    .slice(0, 80)
+    .toString('utf8')
+    .trimStart()
+    .toLowerCase();
+  if (
+    preview.startsWith('content-length:') ||
+    preview.startsWith('content-type:')
+  ) {
+    const split = headerSplit(buffer);
+    if (!split) {
+      return null;
     }
-    const line = buffer.slice(0, nl).toString('utf8').trim();
-    buffer = buffer.slice(nl + 1);
-    if (!line) {
-      continue;
+    const match = split.header.match(/content-length:\s*(\d+)/i);
+    if (!match) {
+      return {
+        message: { method: '' },
+        framing: 'content-length',
+        rest: buffer.slice(split.start),
+      };
     }
-    handle(JSON.parse(line) as JsonRpcRequest);
+    const length = Number(match[1]);
+    if (buffer.length < split.start + length) {
+      return null;
+    }
+    const body = buffer
+      .slice(split.start, split.start + length)
+      .toString('utf8');
+    return {
+      message: JSON.parse(body) as JsonRpcRequest,
+      framing: 'content-length',
+      rest: buffer.slice(split.start + length),
+    };
   }
 
-  return buffer;
+  const nl = buffer.indexOf(0x0a);
+  if (nl === -1) {
+    return null;
+  }
+  const line = buffer.slice(0, nl).toString('utf8').replace(/\r$/, '').trim();
+  const rest = buffer.slice(nl + 1);
+  if (!line) {
+    return { message: { method: '' }, framing: 'ndjson', rest };
+  }
+  return {
+    message: JSON.parse(line) as JsonRpcRequest,
+    framing: 'ndjson',
+    rest,
+  };
 }
 
 export async function startMcpServer(): Promise<void> {
-  process.stdin.setEncoding('utf8');
   let buffer = Buffer.alloc(0);
+  let handlers = Promise.resolve();
 
-  process.stdin.on('data', (chunk: string | Buffer) => {
-    buffer = Buffer.concat([
-      buffer,
-      Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, 'utf8'),
-    ]);
+  const enqueue = (message: JsonRpcRequest): void => {
+    if (message.method == null && hasId(message.id)) {
+      const waiter = pending.get(String(message.id));
+      if (waiter) {
+        pending.delete(String(message.id));
+        waiter(message.result);
+      }
+      return;
+    }
+
+    const id = message.id;
+    handlers = handlers
+      .then(() => handle(message))
+      .catch((error) => {
+        const text = error instanceof Error ? error.message : String(error);
+        process.stderr.write(`${text}\n`);
+        respondError(id, -32603, text);
+      });
+  };
+
+  const drain = (): void => {
+    while (buffer.length > 0) {
+      let taken: Taken | null = null;
+      try {
+        taken = takeMessage(buffer);
+      } catch (error) {
+        const nl = buffer.indexOf(0x0a);
+        buffer = nl === -1 ? Buffer.alloc(0) : buffer.slice(nl + 1);
+        const text = error instanceof Error ? error.message : String(error);
+        process.stderr.write(`${text}\n`);
+        continue;
+      }
+      if (!taken) {
+        return;
+      }
+      buffer = taken.rest;
+      if (!taken.message.method && taken.message.id == null) {
+        continue;
+      }
+      if (!framingLocked) {
+        if (taken.framing === 'content-length') {
+          outputFraming = 'content-length';
+        }
+        framingLocked = true;
+      }
+      enqueue(taken.message);
+    }
+  };
+
+  process.stdin.on('data', (chunk: Buffer | string) => {
+    const next = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    buffer = Buffer.concat([buffer, next]);
     try {
-      buffer = consume(buffer);
+      drain();
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      process.stderr.write(`${message}\n`);
+      const text = error instanceof Error ? error.message : String(error);
+      process.stderr.write(`${text}\n`);
     }
   });
 
   process.stdin.on('end', () => {
-    process.exit(0);
+    try {
+      drain();
+    } catch (error) {
+      const text = error instanceof Error ? error.message : String(error);
+      process.stderr.write(`${text}\n`);
+    }
+    void handlers.then(() => process.exit(0));
   });
+
+  process.stdin.resume();
 }

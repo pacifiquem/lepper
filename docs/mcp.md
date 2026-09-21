@@ -27,7 +27,9 @@ npx -y --package=lepper lepper-mcp
 npx -y lepper mcp
 ```
 
-The server speaks MCP on stdin/stdout. Keep logs off stdout.
+The server speaks MCP on stdin/stdout as newline-delimited JSON. Older
+clients that send `Content-Length` frames still get that framing back. Keep
+logs off stdout.
 
 ### Cursor
 
@@ -101,6 +103,7 @@ Or `yarn mcp`.
 | `map` | optional `path` | Overview of recorded notes, optionally focused |
 | `find` | `query`, optional `path`, `limit` | Natural-language search, e.g. "where is caching" |
 | `todo` | `action` (`add` / `list` / `start` / `done`), plus `title` or `id` | Shared in-progress work |
+| `sync` | none | Fetch `refs/lepper/notes`, merge with this clone, and push |
 
 Example: after creating `src/cache`, call `record` with a note that the cache
 is in-memory, expires in five minutes, and starts at `store.ts`. Another agent
@@ -134,7 +137,8 @@ Use `--package=lepper`. `npx lepper-mcp` looks for a package named
 
 **`Lepper stores notes inside .git`**
 The process `cwd` is not a git checkout. Point the MCP client at the
-workspace, or set `LEPPER_ROOT`.
+workspace, or set `LEPPER_ROOT`. Legacy clients that advertise roots are
+asked for the workspace after initialization.
 
 **Notes written in a worktree do not show up elsewhere**
 Update to a build that stores under `git rev-parse --git-common-dir`. Older

@@ -12,7 +12,11 @@ function gitProcessEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
     GIT_PREFIX: _gitPrefix,
     ...rest
   } = process.env;
-  return { ...rest, ...extra };
+  return {
+    ...rest,
+    GIT_TERMINAL_PROMPT: '0',
+    ...extra,
+  };
 }
 
 export function git(

@@ -49,13 +49,23 @@ export interface TodoIndex {
   todos: Record<string, TodoItem>;
 }
 
+export const SEARCH_ANALYZER = 'bm25';
+
 export interface SearchDoc {
   path: string;
+  /** Stemmed term counts. Values are occurrences, not 0/1 flags. */
   tf: Record<string, number>;
+  /** Number of indexed tokens. BM25 uses this as the document length. */
+  length: number;
 }
 
 export interface SearchIndex {
   version: number;
+  /**
+   * Term analysis used to build `docs`. A missing or different value means
+   * the index must be rebuilt before it can be scored.
+   */
+  analyzer?: string;
   df: Record<string, number>;
   docs: Record<string, SearchDoc>;
 }

@@ -52,5 +52,9 @@ describe('MCP tools', () => {
 
     const listed = callTool('todo', { action: 'list' }, cwd);
     expect(listed.content[0]?.text).toMatch(/Explain eviction/);
+
+    const synced = callTool('sync', {}, cwd);
+    expect(synced.isError).toBeFalsy();
+    expect(synced.content[0]?.text).toMatch(/"pushed": false/);
   });
 });
