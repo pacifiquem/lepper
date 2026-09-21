@@ -1,75 +1,84 @@
-import process from 'process';
 import fs from 'fs';
-import path from 'path';
 import inquirer from 'inquirer';
+import type { Answers, QuestionCollection } from 'inquirer';
 import chalk from 'chalk';
 import { Log } from '../lib/helper';
+import { CliError } from '../lib/errors';
+import {
+  createProjectInfo,
+  getLepperDir,
+  isInitialized,
+  writeInfo,
+} from '../lib/info';
 
-const initCommand = () => {
-  const currentDirectory = process.cwd();
-  const lepperDirectory = path.join(currentDirectory, '.lepper');
+type Prompt = (questions: QuestionCollection) => Promise<Answers>;
 
-  // Create the .lepper directory if it doesn't exist
-  if (!fs.existsSync(lepperDirectory)) {
-    fs.mkdirSync(lepperDirectory);
+const defaultPrompt: Prompt = (questions) => inquirer.prompt(questions);
 
-    const infoFilePath = path.join(lepperDirectory, '_info.json');
+const initQuestions: QuestionCollection = [
+  {
+    type: 'input',
+    name: 'name',
+    message: chalk.cyan('Enter the project name:'),
+  },
+  {
+    type: 'input',
+    name: 'description',
+    message: chalk.cyan('Enter a project description:'),
+  },
+  {
+    type: 'input',
+    name: 'version',
+    message: chalk.cyan('Enter the project version:'),
+  },
+  {
+    type: 'input',
+    name: 'author',
+    message: chalk.cyan('Enter the author:'),
+  },
+  {
+    type: 'list',
+    name: 'isInfoCorrect',
+    message: chalk.yellow('Does the project information look correct?'),
+    choices: ['Yes', 'No'],
+  },
+];
 
-    const collectProjectInfo = () => {
-      inquirer
-        .prompt([
-          {
-            type: 'input',
-            name: 'name',
-            message: chalk.cyan('Enter the project name:'),
-          },
-          {
-            type: 'input',
-            name: 'description',
-            message: chalk.cyan('Enter a project description:'),
-          },
-          {
-            type: 'input',
-            name: 'version',
-            message: chalk.cyan('Enter the project version:'),
-          },
-          {
-            type: 'input',
-            name: 'author',
-            message: chalk.cyan('Enter the author:'),
-          },
-          {
-            type: 'list',
-            name: 'isInfoCorrect',
-            message: chalk.yellow('Does the project information look correct?'),
-            choices: ['Yes', 'No'],
-          },
-        ])
-        .then((answers) => {
-          if (answers.isInfoCorrect === 'Yes') {
-            const projectInfo = {
-              name: answers.name,
-              version: answers.version,
-              author: answers.author,
-            };
+const collectProjectInfo = async (prompt: Prompt): Promise<Answers> => {
+  while (true) {
+    const answers = await prompt(initQuestions);
 
-            // Create the _info.json file with the provided data
-            fs.writeFileSync(
-              infoFilePath,
-              JSON.stringify(projectInfo, null, 2),
-            );
-            Log(chalk.green('Lepper initialized successfully.'));
-          } else {
-            Log(chalk.yellow('Please re-enter project information.'));
-            collectProjectInfo();
-          }
-        });
-    };
+    if (answers.isInfoCorrect === 'Yes') {
+      return answers;
+    }
 
-    collectProjectInfo();
-  } else {
-    Log(chalk.yellow('Lepper directory already exists.'));
+    Log(chalk.yellow('Please re-enter project information.'));
   }
+};
+
+const initCommand = async (
+  cwd: string = process.cwd(),
+  prompt: Prompt = defaultPrompt,
+): Promise<void> => {
+  if (isInitialized(cwd)) {
+    throw new CliError('Lepper directory already exists.');
+  }
+
+  const lepperDirectory = getLepperDir(cwd);
+  if (
+    fs.existsSync(lepperDirectory) &&
+    !fs.statSync(lepperDirectory).isDirectory()
+  ) {
+    throw new CliError(
+      'Cannot initialize: .lepper exists and is not a directory.',
+    );
+  }
+
+  const answers = await collectProjectInfo(prompt);
+  const projectInfo = createProjectInfo(answers);
+
+  writeInfo(cwd, projectInfo);
+  Log(chalk.green('Lepper initialized successfully.'));
 };
 
 export default initCommand;

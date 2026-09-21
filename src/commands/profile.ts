@@ -1,65 +1,61 @@
 import fs from 'fs';
 import path from 'path';
 import inquirer from 'inquirer';
+import type { Answers, QuestionCollection } from 'inquirer';
 import chalk from 'chalk';
 import { Log } from '../lib/helper';
+import { CliError } from '../lib/errors';
+import { readInfo, writeInfo } from '../lib/info';
+import { normalizeProjectPath } from '../lib/paths';
 
-const profileCommand = async (folderDir: string) => {
-  const lepperDirectory = path.join(process.cwd(), '.lepper');
-  const infoFilePath = path.join(lepperDirectory, '_info.json');
+type Prompt = (questions: QuestionCollection) => Promise<Answers>;
 
-  // Check if the .lepper directory exists
-  if (!fs.existsSync(lepperDirectory)) {
-    Log(
-      chalk.red('Lepper is not initialized. Please run "lepper init" first.'),
-    );
-    return;
-  }
+const defaultPrompt: Prompt = (questions) => inquirer.prompt(questions);
 
-  // Read existing data from _info.json
-  const lepperData = fs.existsSync(infoFilePath)
-    ? JSON.parse(fs.readFileSync(infoFilePath, 'utf-8'))
-    : {};
+const profileCommand = async (
+  folderDir?: string,
+  cwd: string = process.cwd(),
+  prompt: Prompt = defaultPrompt,
+): Promise<void> => {
+  const lepperData = readInfo(cwd);
 
-  if (folderDir == undefined) {
-    // If no folder is provided, ask the user to select a folder
-    const answers = await inquirer.prompt([
+  let selectedDir = folderDir;
+
+  if (selectedDir === undefined || selectedDir.trim() === '') {
+    const answers = await prompt([
       {
         type: 'input',
         name: 'directory',
-        message: chalk.cyan(`Please specify the directory: `),
+        message: chalk.cyan('Please specify the directory: '),
       },
     ]);
-    answers.directory.length !== 0
-      ? (folderDir = await answers.directory)
-      : console.error(chalk.red.bold("Directory can't be empty")),
-      process.exit(1);
+
+    selectedDir = String(answers.directory ?? '').trim();
+    if (!selectedDir) {
+      throw new CliError("Directory can't be empty.");
+    }
   }
 
-  // Prompt the user for a description
-  inquirer
-    .prompt([
-      {
-        type: 'input',
-        name: 'description',
-        message: chalk.cyan(
-          `Enter a description for the directory "${folderDir}":`,
-        ),
-      },
-    ])
-    .then((answers) => {
-      // Initialize the "directories" field if it doesn't exist
-      if (!lepperData.directories) {
-        lepperData.directories = {};
-      }
+  const normalized = normalizeProjectPath(selectedDir, cwd);
+  const absolute = path.resolve(cwd, normalized);
 
-      // Add the directory and its description to the data
-      lepperData.directories[folderDir] = answers.description;
+  if (!fs.existsSync(absolute) || !fs.statSync(absolute).isDirectory()) {
+    throw new CliError(`Directory does not exist: ${normalized}`);
+  }
 
-      // Update _info.json with the new data
-      fs.writeFileSync(infoFilePath, JSON.stringify(lepperData, null, 2));
-      Log(chalk.green(`Description for "${folderDir}" set successfully.`));
-    });
+  const answers = await prompt([
+    {
+      type: 'input',
+      name: 'description',
+      message: chalk.cyan(
+        `Enter a description for the directory "${normalized}":`,
+      ),
+    },
+  ]);
+
+  lepperData.directories[normalized] = String(answers.description ?? '');
+  writeInfo(cwd, lepperData);
+  Log(chalk.green(`Description for "${normalized}" set successfully.`));
 };
 
 export default profileCommand;
