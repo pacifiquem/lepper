@@ -37,8 +37,14 @@ export function openStore(cwd: string = process.cwd(), create = true): Store {
   }
 
   const ignoreFile = path.join(dir, '.gitignore');
-  if (!fs.existsSync(ignoreFile)) {
-    fs.writeFileSync(ignoreFile, 'LOCK\n*.tmp\nindex.git\nfetch.index\n');
+  // index.git lives in this directory, so `git add -A` also sees the lock
+  // file git creates beside it. That lock must not enter the notes tree.
+  const ignore = 'LOCK\n*.tmp\n*.lock\nindex.git\nfetch.index\nMIGRATED\n';
+  if (
+    !fs.existsSync(ignoreFile) ||
+    fs.readFileSync(ignoreFile, 'utf8') !== ignore
+  ) {
+    fs.writeFileSync(ignoreFile, ignore);
   }
 
   return { ...git, dir };
@@ -263,6 +269,31 @@ export function packLooseObjects(store: Store, keep: Set<string>): number {
   }
 
   return Object.keys(packed).length;
+}
+
+export function pruneUnreachableLooseObjects(store: Store): void {
+  const reachable = new Set<string>();
+  const index = readIndex(store);
+  for (const summary of Object.values(index.notes)) {
+    const seen = new Set<string>();
+    let cursor: string | null = summary.fingerprint;
+    while (cursor && !seen.has(cursor)) {
+      seen.add(cursor);
+      reachable.add(cursor);
+      const blob = readNoteBlob(store, cursor);
+      cursor = blob ? blob.parent : null;
+    }
+  }
+
+  for (const fp of countLooseObjects(store)) {
+    if (reachable.has(fp)) {
+      continue;
+    }
+    const file = objectPath(store, fp);
+    if (fs.existsSync(file)) {
+      fs.unlinkSync(file);
+    }
+  }
 }
 
 export function maybePack(store: Store): void {

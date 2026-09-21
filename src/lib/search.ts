@@ -1,8 +1,9 @@
+import { bm25Score, bm25Stats } from './bm25';
 import { CliError } from './errors';
-import { readNoteBlob, readSearchIndex, Store } from './store';
+import { readNoteBlob, Store } from './store';
 import { tokenize } from './text';
-import { FindHit } from './types';
-import { getNote, listNotes } from './notes';
+import { FindHit, NoteSummary, SearchDoc } from './types';
+import { ensureSearchIndex, getNote, listNotes } from './notes';
 import { normalizeProjectPath } from './paths';
 
 export interface FindOptions {
@@ -11,18 +12,75 @@ export interface FindOptions {
   path?: string;
 }
 
-function relatedTf(queryToken: string, tf: Record<string, number>): number {
-  let sum = 0;
-  for (const docToken of Object.keys(tf)) {
-    const related =
-      docToken === queryToken ||
-      (queryToken.length >= 4 &&
-        (docToken.startsWith(queryToken) || queryToken.startsWith(docToken)));
-    if (related) {
-      sum += tf[docToken] || 0;
+function inScope(notePath: string, scope: string | undefined): boolean {
+  if (!scope) {
+    return true;
+  }
+  return notePath === scope || notePath.startsWith(`${scope}/`);
+}
+
+function toHit(
+  store: Store,
+  notes: NoteSummary[],
+  fingerprint: string,
+  score: number,
+): FindHit | undefined {
+  const blob = readNoteBlob(store, fingerprint);
+  const summary = notes.find((note) => note.fingerprint === fingerprint);
+  const path = blob?.path || summary?.path || '';
+  const body = blob?.body || summary?.excerpt || '';
+  if (!body) {
+    return undefined;
+  }
+
+  return {
+    path,
+    title: blob?.title || summary?.title || path,
+    body,
+    fingerprint,
+    score: Number(score.toFixed(3)),
+    tags: blob?.tags || summary?.tags || [],
+  };
+}
+
+function substringHits(
+  store: Store,
+  notes: NoteSummary[],
+  query: string,
+  scope: string | undefined,
+  limit: number,
+): FindHit[] {
+  const needle = query.toLowerCase();
+  const hits: FindHit[] = [];
+
+  for (const note of notes) {
+    if (!inScope(note.path, scope)) {
+      continue;
+    }
+    const blob = readNoteBlob(store, note.fingerprint);
+    const tags = blob?.tags || note.tags;
+    const haystack = [
+      note.path,
+      blob?.title || note.title,
+      blob?.body || note.excerpt,
+      tags.join(' '),
+    ]
+      .join('\n')
+      .toLowerCase();
+    if (!haystack.includes(needle)) {
+      continue;
+    }
+    const hit = toHit(store, notes, note.fingerprint, 1);
+    if (!hit) {
+      continue;
+    }
+    hits.push(hit);
+    if (hits.length >= limit) {
+      break;
     }
   }
-  return sum;
+
+  return hits;
 }
 
 export function findNotes(store: Store, options: FindOptions): FindHit[] {
@@ -31,91 +89,59 @@ export function findNotes(store: Store, options: FindOptions): FindHit[] {
     throw new CliError('Find query cannot be empty.');
   }
 
-  const tokens = tokenize(query);
-  const queryText = query.toLowerCase();
+  const limit = options.limit ?? 8;
   const scope = options.path
     ? normalizeProjectPath(options.path, store.root)
     : undefined;
-  const limit = options.limit ?? 8;
-  const search = readSearchIndex(store);
   const notes = listNotes(store);
-  const latest = new Set(notes.map((note) => note.fingerprint));
-  const docCount = Math.max(latest.size, 1);
-  const scores = new Map<string, number>();
+  const index = ensureSearchIndex(store, notes);
+  const queryTerms = tokenize(query);
 
-  const consider = (fingerprint: string, boost: number) => {
-    if (!latest.has(fingerprint)) {
-      return;
-    }
-    const doc = search.docs[fingerprint];
-    if (!doc) {
-      return;
-    }
-    if (scope && doc.path !== scope && !doc.path.startsWith(`${scope}/`)) {
-      return;
-    }
-    scores.set(fingerprint, (scores.get(fingerprint) || 0) + boost);
-  };
+  if (queryTerms.length === 0) {
+    return substringHits(store, notes, query, scope, limit);
+  }
 
-  if (tokens.length === 0) {
-    for (const note of notes) {
-      if (
-        note.path.toLowerCase().includes(queryText) ||
-        note.excerpt.toLowerCase().includes(queryText)
-      ) {
-        consider(note.fingerprint, 1);
-      }
-    }
-  } else {
-    for (const [fp, doc] of Object.entries(search.docs)) {
-      let score = 0;
-      for (const token of tokens) {
-        const tf = relatedTf(token, doc.tf);
-        if (tf === 0) {
-          continue;
-        }
-        const df = search.df[token] || 1;
-        const idf = Math.log(1 + docCount / df);
-        score += tf * idf;
-        if (doc.path.toLowerCase().includes(token)) {
-          score += 4;
-        }
-      }
-      if (score > 0) {
-        consider(fp, score);
-      }
+  const corpus: SearchDoc[] = [];
+  for (const note of notes) {
+    const doc = index.docs[note.fingerprint];
+    if (doc) {
+      corpus.push(doc);
     }
   }
+  const stats = bm25Stats(corpus);
+  const ranked: Array<{ fingerprint: string; score: number }> = [];
 
   for (const note of notes) {
-    if (scope && note.path !== scope && !note.path.startsWith(`${scope}/`)) {
+    if (!inScope(note.path, scope)) {
       continue;
     }
-    const haystack = `${note.path} ${note.title} ${
-      note.excerpt
-    } ${note.tags.join(' ')}`.toLowerCase();
-    if (haystack.includes(queryText)) {
-      consider(note.fingerprint, 6);
+    const doc = index.docs[note.fingerprint];
+    if (!doc) {
+      continue;
+    }
+    const score = bm25Score(queryTerms, doc, stats);
+    if (score > 0) {
+      ranked.push({ fingerprint: note.fingerprint, score });
     }
   }
 
-  return Array.from(scores.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([fp, score]) => {
-      const blob = readNoteBlob(store, fp);
-      const summary = notes.find((note) => note.fingerprint === fp);
-      const path = blob?.path || summary?.path || '';
-      return {
-        path,
-        title: blob?.title || summary?.title || path,
-        body: blob?.body || summary?.excerpt || '',
-        fingerprint: fp,
-        score: Number(score.toFixed(3)),
-        tags: blob?.tags || summary?.tags || [],
-      };
-    })
-    .filter((hit) => hit.body.length > 0);
+  ranked.sort((a, b) => {
+    if (b.score !== a.score) {
+      return b.score - a.score;
+    }
+    const pathA = index.docs[a.fingerprint]?.path || '';
+    const pathB = index.docs[b.fingerprint]?.path || '';
+    return pathA.localeCompare(pathB);
+  });
+
+  const hits: FindHit[] = [];
+  for (const row of ranked.slice(0, limit)) {
+    const hit = toHit(store, notes, row.fingerprint, row.score);
+    if (hit) {
+      hits.push(hit);
+    }
+  }
+  return hits;
 }
 
 export function showNote(store: Store, inputPath: string): FindHit {
