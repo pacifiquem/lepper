@@ -1,0 +1,141 @@
+# Lepper MCP
+
+Lepper exposes an MCP server over stdio so coding agents can record and
+retrieve project notes while they work. Install it with `npx` — no global
+install is required.
+
+## Install with npx
+
+Use the dedicated `lepper-mcp` binary. `-y` skips the npx prompt, and
+`--package=lepper` is what makes npx resolve the binary from this package.
+
+```json
+{
+  "mcpServers": {
+    "lepper": {
+      "command": "npx",
+      "args": ["-y", "--package=lepper", "lepper-mcp"]
+    }
+  }
+}
+```
+
+Equivalent forms:
+
+```bash
+npx -y --package=lepper lepper-mcp
+npx -y lepper mcp
+```
+
+The server speaks MCP on stdin/stdout. Keep logs off stdout.
+
+### Cursor
+
+Cursor Settings → MCP → add a server, or merge into
+`.cursor/mcp.json` in the project (or `~/.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "lepper": {
+      "command": "npx",
+      "args": ["-y", "--package=lepper", "lepper-mcp"],
+      "env": {
+        "LEPPER_AGENT": "cursor"
+      }
+    }
+  }
+}
+```
+
+Cursor starts the server with the workspace as `cwd`, so worktrees work as
+long as that workspace is the worktree checkout.
+
+### Claude Desktop
+
+Edit the desktop config (`claude_desktop_config.json`) and add the same
+`npx` command. If the app does not start MCP inside the git checkout, set
+`LEPPER_ROOT` to the repository (or worktree) path:
+
+```json
+{
+  "mcpServers": {
+    "lepper": {
+      "command": "npx",
+      "args": ["-y", "--package=lepper", "lepper-mcp"],
+      "env": {
+        "LEPPER_ROOT": "/absolute/path/to/repo",
+        "LEPPER_AGENT": "claude-desktop"
+      }
+    }
+  }
+}
+```
+
+### Claude Code / Codex / other stdio hosts
+
+```json
+{
+  "command": "npx",
+  "args": ["-y", "--package=lepper", "lepper-mcp"],
+  "env": {
+    "LEPPER_AGENT": "codex"
+  }
+}
+```
+
+### Local checkout
+
+```bash
+yarn compile
+node compiled/bin/lepper-mcp.js
+```
+
+Or `yarn mcp`.
+
+## Tools
+
+| Tool | Arguments | Purpose |
+| --- | --- | --- |
+| `record` | `path`, `note`, optional `title`, `tags`, `agent` | Save a note about a directory or file |
+| `map` | optional `path` | Overview of recorded notes, optionally focused |
+| `find` | `query`, optional `path`, `limit` | Natural-language search, e.g. "where is caching" |
+| `todo` | `action` (`add` / `list` / `start` / `done`), plus `title` or `id` | Shared in-progress work |
+
+Example: after creating `src/cache`, call `record` with a note that the cache
+is in-memory, expires in five minutes, and starts at `store.ts`. Another agent
+can `find` "where is caching" and skip reading the implementation.
+
+## Environment
+
+| Variable | Purpose |
+| --- | --- |
+| `LEPPER_ROOT` | Git repository or worktree to use when `cwd` is not the project |
+| `LEPPER_AGENT` | Name stored on notes and todos you write |
+
+## Git worktrees
+
+Notes are stored in the **shared** git directory (`.git/lepper` on the main
+repo), not in `.git/worktrees/<name>/`. Every worktree of a clone reads and
+writes the same note store, so agents on different branches still share
+context.
+
+`record` and `map` still resolve paths from the current worktree root, so
+`src/cache` in a linked worktree is the same `./src/cache` note as in the
+primary checkout.
+
+`lepper sync` publishes `refs/lepper/notes` from that shared store.
+
+## Troubleshooting
+
+**`npx` cannot find `lepper-mcp`**
+Use `--package=lepper`. `npx lepper-mcp` looks for a package named
+`lepper-mcp`; the binary lives on the `lepper` package.
+
+**`Lepper stores notes inside .git`**
+The process `cwd` is not a git checkout. Point the MCP client at the
+workspace, or set `LEPPER_ROOT`.
+
+**Notes written in a worktree do not show up elsewhere**
+Update to a build that stores under `git rev-parse --git-common-dir`. Older
+builds wrote into the per-worktree git dir.

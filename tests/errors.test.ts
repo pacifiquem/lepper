@@ -20,14 +20,13 @@ describe('formatCliFailure', () => {
     });
   });
 
-  it('maps JSON syntax errors to a friendly _info.json message without a stack', () => {
+  it('uses the syntax error message without a stack trace', () => {
     const failure = formatCliFailure(
       new SyntaxError('Unexpected end of JSON input'),
     );
 
     expect(failure.exitCode).toBe(1);
-    expect(failure.message).toContain('.lepper/_info.json');
-    expect(failure.message).toContain('Unexpected end of JSON input');
+    expect(failure.message).toBe('Unexpected end of JSON input');
     expect(failure.message).not.toMatch(/\n\s+at\s+/);
   });
 
