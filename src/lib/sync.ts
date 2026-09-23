@@ -261,10 +261,14 @@ function compareVersions(left: NoteBlob, right: NoteBlob): number {
   if (left.createdAt > right.createdAt) {
     return 1;
   }
-  if (left.fingerprint < right.fingerprint) {
+  // Fingerprints change when a note is relinked, so a second sync would
+  // reorder equal timestamps and publish again. The version key does not.
+  const leftKey = versionKey(left);
+  const rightKey = versionKey(right);
+  if (leftKey < rightKey) {
     return -1;
   }
-  if (left.fingerprint > right.fingerprint) {
+  if (leftKey > rightKey) {
     return 1;
   }
   return 0;
