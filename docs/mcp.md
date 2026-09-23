@@ -102,19 +102,27 @@ Or `yarn mcp`.
 | `record` | `path`, `note`, optional `title`, `tags`, `agent` | Save a note about a directory or file |
 | `map` | optional `path` | Overview of recorded notes, optionally focused |
 | `find` | `query`, optional `path`, `limit` | Natural-language search, e.g. "where is caching" |
+| `codemap` | optional `path`, `symbol` | What calls what, for the languages in the 2025 Stack Overflow top 10 plus Go, Rust, Elixir, and Erlang |
+| `blast` | `target`, optional `depth` | What depends on a file or symbol (`path`, `name`, or `path#symbol`) |
+| `diary` | `action` (`recall` / `list` / `write`), plus `work`, `well`, `wrong` | Session retrospective shared across agents and clones |
 | `todo` | `action` (`add` / `list` / `start` / `done`), plus `title` or `id` | Shared in-progress work |
 | `sync` | none | Fetch `refs/lepper/notes`, merge with this clone, and push |
 
 Example: after creating `src/cache`, call `record` with a note that the cache
 is in-memory, expires in five minutes, and starts at `store.ts`. Another agent
-can `find` "where is caching" and skip reading the implementation.
+can `find` "where is caching" and skip reading the implementation. Before
+changing `get`, call `blast` with `src/cache.js#get` and read the callers and
+importers that would break. `codemap` is the same graph, drawn from the caller
+side. At the start of a session, call `diary` with action `recall` and
+follow what to keep doing and what to stop. When you finish, `write` one line
+of work plus what went well and what went wrong, then `sync`.
 
 ## Environment
 
 | Variable | Purpose |
 | --- | --- |
 | `LEPPER_ROOT` | Git repository or worktree to use when `cwd` is not the project |
-| `LEPPER_AGENT` | Name stored on notes and todos you write |
+| `LEPPER_AGENT` | Name stored on notes, todos, and diary entries you write |
 
 ## Git worktrees
 

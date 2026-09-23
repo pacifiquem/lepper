@@ -1,11 +1,13 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { mergeDiary, sameDiary } from './diary';
 import { fingerprint } from './fingerprint';
 import { git, gitOk, hasRemote } from './git';
 import { rebuildSearchIndex } from './notes';
 import { excerpt } from './text';
 import {
+  DiaryIndex,
   LEPPER_REF,
   LepperIndex,
   NoteBlob,
@@ -15,10 +17,12 @@ import {
 import {
   openStore,
   pruneUnreachableLooseObjects,
+  readDiary,
   readIndex,
   readNoteBlob,
   readTodos,
   Store,
+  writeDiary,
   writeIndex,
   writeNoteBlob,
   writeTodos,
@@ -388,14 +392,26 @@ function importStore(fromDir: string, into: Store): boolean {
     const mergedTodos = incomingTodos
       ? mergeTodos(localTodos, incomingTodos)
       : undefined;
+    const remoteDiaryPath = path.join(fromDir, 'diary.json');
+    const incomingDiary = fs.existsSync(remoteDiaryPath)
+      ? (JSON.parse(fs.readFileSync(remoteDiaryPath, 'utf-8')) as DiaryIndex)
+      : undefined;
+    const localDiary = readDiary(into);
+    const mergedDiary = incomingDiary
+      ? mergeDiary(localDiary, incomingDiary)
+      : undefined;
     const notesMatch = sameFingerprints(merged.notes, incoming.notes || {});
     const todosMatch = incomingTodos
       ? sameTodos(mergedTodos as TodoIndex, incomingTodos)
       : Object.keys(localTodos.todos).length === 0;
+    const diaryMatch = incomingDiary
+      ? sameDiary(mergedDiary as DiaryIndex, incomingDiary)
+      : Object.keys(localDiary.entries).length === 0;
 
-    if (notesMatch && todosMatch) {
+    if (notesMatch && todosMatch && diaryMatch) {
       fs.copyFileSync(remoteIndexPath, path.join(into.dir, 'index.json'));
       copyFileIfPresent(remoteTodosPath, path.join(into.dir, 'todos.json'));
+      copyFileIfPresent(remoteDiaryPath, path.join(into.dir, 'diary.json'));
       copyFileIfPresent(
         path.join(fromDir, 'search.json'),
         path.join(into.dir, 'search.json'),
@@ -415,6 +431,9 @@ function importStore(fromDir: string, into: Store): boolean {
 
     if (mergedTodos && incomingTodos && !todosMatch) {
       writeTodos(into, mergedTodos);
+    }
+    if (mergedDiary && incomingDiary && !diaryMatch) {
+      writeDiary(into, mergedDiary);
     }
     return true;
   }

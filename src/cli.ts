@@ -5,6 +5,9 @@ import { handleError } from './lib/errors';
 import recordCommand from './commands/record';
 import mapCommand from './commands/map';
 import findCommand from './commands/find';
+import codeCommand from './commands/code';
+import blastCommand from './commands/blast';
+import diaryCommand from './commands/diary';
 import todoCommand from './commands/todo';
 import syncCommand from './commands/sync';
 import {
@@ -21,7 +24,7 @@ export function createProgram(): Command {
   program
     .name('lepper')
     .description(
-      'Shared notes for AI agents working on a codebase. Record, map, find, and todo.',
+      'Shared notes for AI agents working on a codebase. Record, map, find, codemap, blast, diary, and todo.',
     )
     .usage('command [options]')
     .version(
@@ -71,6 +74,39 @@ export function createProgram(): Command {
     });
 
   program
+    .command('codemap')
+    .description('Show what calls what, read from the source tree')
+    .argument('[path]', 'Optional file or directory to focus')
+    .option('--symbol <name>', 'Focus one function, method, or class')
+    .option('--json', 'Print JSON')
+    .action(
+      (
+        pathArg: string | undefined,
+        options: { symbol?: string; json?: boolean },
+      ) => {
+        codeCommand({
+          path: pathArg,
+          symbol: options.symbol,
+          json: options.json,
+        });
+      },
+    );
+
+  program
+    .command('blast')
+    .description('Show what depends on a file or symbol before you change it')
+    .argument('<target>', 'File, symbol, or path#symbol')
+    .option('--depth <n>', 'Caller hops to follow', (value) => Number(value))
+    .option('--json', 'Print JSON')
+    .action((target: string, options: { depth?: number; json?: boolean }) => {
+      blastCommand({
+        target,
+        depth: options.depth,
+        json: options.json,
+      });
+    });
+
+  program
     .command('find')
     .description('Find notes with a natural-language query')
     .argument('<query...>', 'Query such as "where is caching"')
@@ -85,6 +121,58 @@ export function createProgram(): Command {
         findCommand({
           query: queryParts.join(' '),
           path: options.path,
+          limit: options.limit,
+          json: options.json,
+        });
+      },
+    );
+
+  program
+    .command('diary')
+    .description(
+      'Session diary shared across agents: what was done, what went well, and what went wrong',
+    )
+    .argument('[action]', 'recall, list, or write', 'recall')
+    .option('--work <text>', 'One line describing the work, for write')
+    .option(
+      '--well <text>',
+      'Something that went well or that the user liked. Repeat to add more.',
+      (value: string, previous: string[]) => {
+        previous.push(value);
+        return previous;
+      },
+      [] as string[],
+    )
+    .option(
+      '--wrong <text>',
+      'Something that went wrong or that the user did not want. Repeat to add more.',
+      (value: string, previous: string[]) => {
+        previous.push(value);
+        return previous;
+      },
+      [] as string[],
+    )
+    .option('--agent <name>', 'Agent name')
+    .option('--limit <n>', 'How many entries to read', (value) => Number(value))
+    .option('--json', 'Print JSON')
+    .action(
+      (
+        action: string,
+        options: {
+          work?: string;
+          well?: string[];
+          wrong?: string[];
+          agent?: string;
+          limit?: number;
+          json?: boolean;
+        },
+      ) => {
+        diaryCommand({
+          action,
+          work: options.work,
+          wentWell: options.well,
+          wentWrong: options.wrong,
+          agent: options.agent,
           limit: options.limit,
           json: options.json,
         });
