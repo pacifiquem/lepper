@@ -30,5 +30,8 @@ I use GitHub issues to track public bugs. Report a bug by [opening a new issue](
 - What actually happens
 - Notes (possibly including why you think this might be happening, or stuff you tried that didn't work)
 
+⚠️ Run ``lepper diary`` at the start of a session and follow keep and stop. ⚠️
 ⚠️ Run ``lepper map`` to read the project overview other agents have recorded. ⚠️
+⚠️ Run ``lepper codemap`` to see what calls what, and ``lepper blast <target>`` before changing a symbol. ⚠️
 ⚠️ Record notes with ``lepper record <path> --note "..."`` when you add or learn a directory. ⚠️
+⚠️ When you finish, ``lepper diary write --work "..." --well "..." --wrong "..."`` so the next session keeps what worked. ⚠️

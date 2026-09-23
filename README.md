@@ -13,6 +13,12 @@ If an agent adds `src/cache`, it records something like:
 The next agent can `find "where is caching"` or `map src/cache` and get that
 context without reading the whole implementation.
 
+`lepper codemap` reads the source and shows what calls what. `lepper blast`
+answers the other direction: what would be affected if you changed a file or
+a symbol. The map covers the languages most used in the 2025 Stack Overflow
+survey: JavaScript, TypeScript, Python, Java, C#, C, C++, SQL, Bash, PowerShell,
+HTML, and CSS, plus Go, Rust, Elixir, and Erlang.
+
 ## How it stores notes
 
 Notes live in **`.git/lepper`** on the shared git directory (`git rev-parse
@@ -49,7 +55,7 @@ repo or worktree path.
 Full client configs, tools, worktrees, and troubleshooting:
 [docs/mcp.md](docs/mcp.md).
 
-Tools: `record`, `map`, `find`, `todo`, `sync`.
+Tools: `record`, `map`, `find`, `codemap`, `blast`, `diary`, `todo`, `sync`.
 
 ## CLI
 
@@ -60,6 +66,12 @@ lepper record src/cache -n "In-memory API cache, 5 minute TTL, entry store.ts" -
 lepper map
 lepper map src/cache
 lepper find "where is caching"
+lepper codemap
+lepper codemap src/cache --symbol get
+lepper blast src/cache.js#get
+lepper blast src/auth.js --depth 2
+lepper diary
+lepper diary write --work "Split parsers by language" --well "One folder per language" --wrong "Two keyword folders" --agent claude
 lepper todo add "Document eviction"
 lepper todo start todo-abc123 --agent explorer
 lepper todo done todo-abc123

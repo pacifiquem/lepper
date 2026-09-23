@@ -5,6 +5,7 @@ import { CliError } from './errors';
 import { GitContext, resolveGit } from './git';
 import { withStoreLock } from './lock';
 import {
+  DiaryIndex,
   LepperIndex,
   NoteBlob,
   SearchIndex,
@@ -62,6 +63,10 @@ function todosPath(store: Store): string {
   return path.join(store.dir, 'todos.json');
 }
 
+function diaryPath(store: Store): string {
+  return path.join(store.dir, 'diary.json');
+}
+
 function objectPath(store: Store, fingerprint: string): string {
   return path.join(
     store.dir,
@@ -89,6 +94,14 @@ function emptyTodos(): TodoIndex {
     version: STORE_VERSION,
     updatedAt: new Date().toISOString(),
     todos: {},
+  };
+}
+
+function emptyDiary(): DiaryIndex {
+  return {
+    version: STORE_VERSION,
+    updatedAt: new Date().toISOString(),
+    entries: {},
   };
 }
 
@@ -141,6 +154,18 @@ export function readSearchIndex(store: Store): SearchIndex {
 export function writeSearchIndex(store: Store, index: SearchIndex): void {
   index.version = STORE_VERSION;
   writeJsonFile(searchPath(store), index);
+}
+
+export function readDiary(store: Store): DiaryIndex {
+  const index = readJsonFile(diaryPath(store), emptyDiary());
+  index.entries = index.entries || {};
+  return index;
+}
+
+export function writeDiary(store: Store, index: DiaryIndex): void {
+  index.version = STORE_VERSION;
+  index.updatedAt = new Date().toISOString();
+  writeJsonFile(diaryPath(store), index);
 }
 
 export function readTodos(store: Store): TodoIndex {

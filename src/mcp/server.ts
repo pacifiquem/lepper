@@ -3,7 +3,19 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { withLepper } from '../lib/api';
 import { git, projectCwd } from '../lib/git';
+import {
+  blastRadius,
+  codeMap,
+  formatBlast,
+  formatCodeMap,
+} from '../lib/codemap';
 import { formatMap, projectMap } from '../lib/map';
+import {
+  formatDiary,
+  listDiary,
+  recallDiary,
+  writeDiaryEntry,
+} from '../lib/diary';
 import { getNote, historyFor, recordNote } from '../lib/notes';
 import { findNotes } from '../lib/search';
 import { normalizeProjectPath } from '../lib/paths';
@@ -24,7 +36,7 @@ const SUPPORTED_PROTOCOL_VERSIONS = [
   ...LEGACY_PROTOCOL_VERSIONS,
 ];
 const INSTRUCTIONS =
-  'Record what you learn about this repository so later agents can find it. Use find and map before rereading code. Use sync after clone, and again after recording, to merge notes with other clones through refs/lepper/notes.';
+  'Record what you learn about this repository so later agents can find it. At the start of a session, call diary with action recall and follow keep and stop before you work. Use find and map before rereading notes. Use codemap to see what calls what, and blast before changing a file or symbol so you can see what depends on it. When you finish, call diary with action write: one line of work, what went well, and what went wrong. Use sync after clone, and again after recording, to merge notes and the diary with other clones through refs/lepper/notes.';
 
 interface JsonRpcRequest {
   jsonrpc?: string;
@@ -63,6 +75,20 @@ function num(
   }
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function linesOf(
+  params: Record<string, unknown> | undefined,
+  key: string,
+): string[] {
+  const value = params?.[key];
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item));
+  }
+  if (typeof value === 'string' && value.trim()) {
+    return [value];
+  }
+  return [];
 }
 
 function tagsOf(params: Record<string, unknown> | undefined): string[] {
@@ -127,6 +153,46 @@ const TOOLS = [
     annotations: readOnly,
   },
   {
+    name: 'codemap',
+    description:
+      'Read the source tree and return a map of what calls what. Covers JavaScript, TypeScript, Python, Java, C, C++, C#, SQL, Bash, PowerShell, HTML, CSS, Go, Rust, Elixir, and Erlang. Optional path focuses a file or directory. Optional symbol focuses one function, method, or class.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: {
+          type: 'string',
+          description: 'Optional file or directory to focus',
+        },
+        symbol: {
+          type: 'string',
+          description: 'Optional function, method, or class name',
+        },
+      },
+    },
+    annotations: readOnly,
+  },
+  {
+    name: 'blast',
+    description:
+      'Return the blast radius of a file or symbol: what calls it, what imports it, and the transitive dependents. Ask for this before changing code so a breaking change is visible. Target is a file, a symbol name, or path#symbol.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        target: {
+          type: 'string',
+          description:
+            'File path, symbol name, or path#symbol. Example: src/cache.js#get',
+        },
+        depth: {
+          type: 'number',
+          description: 'How many caller hops to follow. Default 4.',
+        },
+      },
+      required: ['target'],
+    },
+    annotations: readOnly,
+  },
+  {
     name: 'find',
     description:
       'Find notes with a natural-language query such as "where is caching". Returns the matching note bodies so you do not need to read the implementation.',
@@ -140,6 +206,41 @@ const TOOLS = [
       required: ['query'],
     },
     annotations: readOnly,
+  },
+  {
+    name: 'diary',
+    description:
+      'Cross-session diary shared by every agent on this repo. Call action recall at the start of a session and follow keep and stop. Call action write when you finish: one line of work, what the user liked, and what they did not want.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['recall', 'list', 'write'],
+          description:
+            'recall is the default and the one to use at session start',
+        },
+        work: {
+          type: 'string',
+          description: 'One line describing what this session worked on',
+        },
+        well: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'What went well or what the user preferred',
+        },
+        wrong: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'What went wrong or what the user did not want',
+        },
+        agent: { type: 'string', description: 'Optional agent name' },
+        limit: {
+          type: 'number',
+          description: 'How many recent entries to read. Default 20.',
+        },
+      },
+    },
   },
   {
     name: 'todo',
@@ -231,6 +332,29 @@ export function callTool(
       });
     }
 
+    if (name === 'codemap') {
+      const map = codeMap(cwd, {
+        path: str(params, 'path') || undefined,
+        symbol: str(params, 'symbol') || undefined,
+      });
+      return textResult({
+        map: formatCodeMap(map),
+        ...map,
+      });
+    }
+
+    if (name === 'blast') {
+      const result = blastRadius(
+        cwd,
+        str(params, 'target'),
+        num(params, 'depth'),
+      );
+      return textResult({
+        summary: formatBlast(result),
+        ...result,
+      });
+    }
+
     if (name === 'find') {
       const hits = withLepper(cwd, (store) =>
         findNotes(store, {
@@ -240,6 +364,28 @@ export function callTool(
         }),
       );
       return textResult({ hits });
+    }
+
+    if (name === 'diary') {
+      const action = str(params, 'action') || 'recall';
+      const payload = withLepper(cwd, (store) => {
+        if (action === 'write' || action === 'add' || action === 'record') {
+          return writeDiaryEntry(store, {
+            work: str(params, 'work'),
+            wentWell: linesOf(params, 'well'),
+            wentWrong: linesOf(params, 'wrong'),
+            agent: str(params, 'agent') || undefined,
+          });
+        }
+        if (action === 'list') {
+          return listDiary(store, num(params, 'limit') ?? 20);
+        }
+        return {
+          brief: formatDiary(recallDiary(store, num(params, 'limit') ?? 20)),
+          ...recallDiary(store, num(params, 'limit') ?? 20),
+        };
+      });
+      return textResult(payload);
     }
 
     if (name === 'todo') {

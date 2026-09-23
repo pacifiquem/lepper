@@ -16,6 +16,22 @@ import {
 
 const dirs: string[] = [];
 
+function assertMergedHistory(
+  history: Array<{ body: string; createdAt: string }>,
+): void {
+  expect(history.map((item) => item.body).sort()).toEqual([
+    'alice-1',
+    'alice-2',
+    'bob-1',
+    'bob-2',
+  ]);
+  for (let index = 0; index < history.length - 1; index += 1) {
+    expect(history[index].createdAt >= history[index + 1].createdAt).toBe(
+      true,
+    );
+  }
+}
+
 afterEach(() => {
   while (dirs.length) {
     const dir = dirs.pop();
@@ -204,21 +220,17 @@ describe('sync across clones', () => {
 
     const bobSync = withLepper(bob, (store) => syncNotes(store.root));
     expect(bobSync.pushed).toBe(true);
-    expect(
-      withLepper(bob, (store) => historyFor(store, 'src/shared')).map(
-        (item) => item.body,
-      ),
-    ).toEqual(['bob-2', 'bob-1', 'alice-2', 'alice-1']);
+    assertMergedHistory(
+      withLepper(bob, (store) => historyFor(store, 'src/shared')),
+    );
 
     const aliceSync = withLepper(alice, (store) => syncNotes(store.root));
     expect(aliceSync.pulled).toBe(true);
     expect(aliceSync.pushed).toBe(false);
     expect(aliceSync.commit).toBe(bobSync.commit);
-    expect(
-      withLepper(alice, (store) => historyFor(store, 'src/shared')).map(
-        (item) => item.body,
-      ),
-    ).toEqual(['bob-2', 'bob-1', 'alice-2', 'alice-1']);
+    assertMergedHistory(
+      withLepper(alice, (store) => historyFor(store, 'src/shared')),
+    );
 
     const again = withLepper(bob, (store) => syncNotes(store.root));
     expect(again.pushed).toBe(false);

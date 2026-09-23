@@ -24,7 +24,10 @@ describe('deprecated commands', () => {
 
     expect(names).toEqual(
       [
+        'blast',
+        'codemap',
         'describe',
+        'diary',
         'find',
         'init',
         'map',

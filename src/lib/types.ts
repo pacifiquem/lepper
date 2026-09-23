@@ -49,6 +49,34 @@ export interface TodoIndex {
   todos: Record<string, TodoItem>;
 }
 
+export interface DiaryEntry {
+  id: string;
+  fingerprint: string;
+  /** One line describing the work in that session. */
+  work: string;
+  wentWell: string[];
+  wentWrong: string[];
+  createdAt: string;
+  agent?: string;
+}
+
+export interface DiaryIndex {
+  version: number;
+  updatedAt: string;
+  entries: Record<string, DiaryEntry>;
+}
+
+export interface DiaryBrief {
+  keep: string[];
+  stop: string[];
+  recent: Array<{
+    id: string;
+    work: string;
+    createdAt: string;
+    agent?: string;
+  }>;
+}
+
 export const SEARCH_ANALYZER = 'bm25';
 
 export interface SearchDoc {
