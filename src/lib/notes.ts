@@ -1,9 +1,16 @@
 import { documentFrequencies } from './bm25';
+import {
+  compareNoteVersions,
+  noteVersionKey,
+  preferNoteVersion,
+  relinkNote,
+} from './chain';
 import { CliError } from './errors';
 import { fingerprint } from './fingerprint';
 import { normalizeProjectPath } from './paths';
 import {
   maybePack,
+  readAllNoteBlobs,
   readIndex,
   readNoteBlob,
   readSearchIndex,
@@ -160,11 +167,99 @@ export function recordNote(store: Store, input: RecordInput): NoteBlob {
   };
 
   writeNoteBlob(store, note);
-  index.notes[normalized] = summaryFrom(note);
-  writeIndex(store, index);
+  recoverStoredNotes(store);
   rebuildSearchIndex(store);
   maybePack(store);
-  return note;
+
+  const saved = historyFor(store, normalized).find(
+    (item) => noteVersionKey(item) === noteVersionKey(note),
+  );
+  return saved || note;
+}
+
+/**
+ * Link every stored note body into its path chain. A concurrent record can
+ * replace index.json and leave the other agent's blob unreferenced; this puts
+ * that blob back on the chain instead of letting publish delete it.
+ */
+export function recoverStoredNotes(store: Store): boolean {
+  const index = readIndex(store);
+  const onChain = new Set<string>();
+  for (const summary of Object.values(index.notes)) {
+    const seen = new Set<string>();
+    let cursor: string | null = summary.fingerprint;
+    while (cursor && !seen.has(cursor)) {
+      seen.add(cursor);
+      onChain.add(cursor);
+      const blob = readNoteBlob(store, cursor);
+      cursor = blob ? blob.parent : null;
+    }
+  }
+
+  const byPath = new Map<string, NoteBlob[]>();
+  for (const blob of readAllNoteBlobs(store)) {
+    const list = byPath.get(blob.path) || [];
+    list.push(blob);
+    byPath.set(blob.path, list);
+  }
+
+  const notes = { ...index.notes };
+  let changed = false;
+  for (const [pathKey, group] of Array.from(byPath.entries())) {
+    const tip = unifyNoteBlobs(store, group, onChain);
+    if (!tip) {
+      continue;
+    }
+    if (notes[pathKey]?.fingerprint !== tip.fingerprint) {
+      notes[pathKey] = summaryFrom(tip);
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    writeIndex(store, { ...index, notes });
+  }
+  return changed;
+}
+
+export function unifyNoteBlobs(
+  store: Store,
+  blobs: NoteBlob[],
+  onChain?: ReadonlySet<string>,
+): NoteBlob | undefined {
+  const chosen = new Map<string, NoteBlob>();
+  for (const blob of blobs) {
+    const key = noteVersionKey(blob);
+    const current = chosen.get(key);
+    chosen.set(key, current ? preferNoteVersion(current, blob, onChain) : blob);
+  }
+
+  const versions = Array.from(chosen.values()).sort(compareNoteVersions);
+  if (versions.length === 0) {
+    return undefined;
+  }
+
+  const members = new Set<string>();
+  for (const blob of versions) {
+    members.add(blob.fingerprint);
+  }
+
+  let previous: string | null = null;
+  const oldestParent = versions[0].parent;
+  if (oldestParent && !members.has(oldestParent)) {
+    previous = oldestParent;
+  }
+
+  let tip: NoteBlob | undefined;
+  for (const blob of versions) {
+    const next = blob.parent === previous ? blob : relinkNote(blob, previous);
+    if (next.fingerprint !== blob.fingerprint) {
+      writeNoteBlob(store, next);
+    }
+    previous = next.fingerprint;
+    tip = next;
+  }
+  return tip;
 }
 
 export function getNote(store: Store, inputPath: string): NoteBlob | undefined {
