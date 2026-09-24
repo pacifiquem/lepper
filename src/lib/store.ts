@@ -1,6 +1,8 @@
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { gunzipSync, gzipSync } from 'zlib';
+import { noteVersionKey } from './chain';
 import { CliError } from './errors';
 import { GitContext, resolveGit } from './git';
 import { withStoreLock } from './lock';
@@ -40,7 +42,8 @@ export function openStore(cwd: string = process.cwd(), create = true): Store {
   const ignoreFile = path.join(dir, '.gitignore');
   // index.git lives in this directory, so `git add -A` also sees the lock
   // file git creates beside it. That lock must not enter the notes tree.
-  const ignore = 'LOCK\n*.tmp\n*.lock\nindex.git\nfetch.index\nMIGRATED\n';
+  const ignore =
+    'LOCK\nLOCK.stale-*\n*.tmp\n*.lock\nindex.git\nfetch.index\nMIGRATED\n';
   if (
     !fs.existsSync(ignoreFile) ||
     fs.readFileSync(ignoreFile, 'utf8') !== ignore
@@ -188,6 +191,53 @@ export function writeNoteBlob(store: Store, note: NoteBlob): void {
   writeJsonFile(file, note);
 }
 
+function isNoteBlob(value: unknown): value is NoteBlob {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const blob = value as NoteBlob;
+  return (
+    typeof blob.fingerprint === 'string' &&
+    typeof blob.path === 'string' &&
+    typeof blob.body === 'string'
+  );
+}
+
+export function readAllNoteBlobs(store: Store): NoteBlob[] {
+  const blobs: NoteBlob[] = [];
+  const seen = new Set<string>();
+  const add = (blob: NoteBlob | undefined) => {
+    if (!isNoteBlob(blob) || seen.has(blob.fingerprint)) {
+      return;
+    }
+    seen.add(blob.fingerprint);
+    blobs.push(blob);
+  };
+
+  for (const fp of countLooseObjects(store)) {
+    try {
+      add(readNoteBlob(store, fp));
+    } catch {
+      // a torn object is ignored until a later write replaces it
+    }
+  }
+
+  for (const pack of packFiles(store)) {
+    try {
+      const objects = JSON.parse(
+        gunzipSync(fs.readFileSync(pack)).toString('utf8'),
+      ) as Record<string, NoteBlob>;
+      for (const blob of Object.values(objects)) {
+        add(blob);
+      }
+    } catch {
+      // skip a pack that cannot be read
+    }
+  }
+
+  return blobs;
+}
+
 export function readNoteBlob(
   store: Store,
   fingerprint: string,
@@ -280,7 +330,7 @@ export function packLooseObjects(store: Store, keep: Set<string>): number {
 
   const packDir = path.join(store.dir, 'packs');
   fs.mkdirSync(packDir, { recursive: true });
-  const id = String(Date.now());
+  const id = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
   const packFile = path.join(packDir, `pack-${id}.json.gz`);
   const idxFile = path.join(packDir, `pack-${id}.idx.json`);
   fs.writeFileSync(packFile, gzipSync(Buffer.from(JSON.stringify(packed))));
@@ -298,6 +348,7 @@ export function packLooseObjects(store: Store, keep: Set<string>): number {
 
 export function pruneUnreachableLooseObjects(store: Store): void {
   const reachable = new Set<string>();
+  const represented = new Set<string>();
   const index = readIndex(store);
   for (const summary of Object.values(index.notes)) {
     const seen = new Set<string>();
@@ -306,6 +357,9 @@ export function pruneUnreachableLooseObjects(store: Store): void {
       seen.add(cursor);
       reachable.add(cursor);
       const blob = readNoteBlob(store, cursor);
+      if (blob) {
+        represented.add(noteVersionKey(blob));
+      }
       cursor = blob ? blob.parent : null;
     }
   }
@@ -315,9 +369,22 @@ export function pruneUnreachableLooseObjects(store: Store): void {
       continue;
     }
     const file = objectPath(store, fp);
-    if (fs.existsSync(file)) {
-      fs.unlinkSync(file);
+    if (!fs.existsSync(file)) {
+      continue;
     }
+
+    let blob: NoteBlob | undefined;
+    try {
+      blob = readJsonFile<NoteBlob>(file, undefined as unknown as NoteBlob);
+    } catch {
+      blob = undefined;
+    }
+    // A body that is not already on a chain was dropped from the index by a
+    // concurrent write. Keep the file so it can be linked back.
+    if (isNoteBlob(blob) && !represented.has(noteVersionKey(blob))) {
+      continue;
+    }
+    fs.unlinkSync(file);
   }
 }
 

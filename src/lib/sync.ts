@@ -2,9 +2,12 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { mergeDiary, sameDiary } from './diary';
-import { fingerprint } from './fingerprint';
 import { git, gitOk, hasRemote } from './git';
-import { rebuildSearchIndex } from './notes';
+import {
+  rebuildSearchIndex,
+  recoverStoredNotes,
+  unifyNoteBlobs,
+} from './notes';
 import { excerpt } from './text';
 import {
   DiaryIndex,
@@ -233,71 +236,6 @@ function summaryFromBlob(note: NoteBlob): NoteSummary {
   };
 }
 
-function versionKey(blob: NoteBlob): string {
-  return fingerprint({
-    path: blob.path,
-    title: blob.title,
-    body: blob.body,
-    tags: blob.tags,
-    createdAt: blob.createdAt,
-    agent: blob.agent || null,
-    kind: 'note' as const,
-  });
-}
-
-function preferVersion(current: NoteBlob, next: NoteBlob): NoteBlob {
-  const currentLinked = current.parent != null;
-  const nextLinked = next.parent != null;
-  if (currentLinked !== nextLinked) {
-    return nextLinked ? next : current;
-  }
-  return next.fingerprint > current.fingerprint ? next : current;
-}
-
-function compareVersions(left: NoteBlob, right: NoteBlob): number {
-  if (left.createdAt < right.createdAt) {
-    return -1;
-  }
-  if (left.createdAt > right.createdAt) {
-    return 1;
-  }
-  // Fingerprints change when a note is relinked, so a second sync would
-  // reorder equal timestamps and publish again. The version key does not.
-  const leftKey = versionKey(left);
-  const rightKey = versionKey(right);
-  if (leftKey < rightKey) {
-    return -1;
-  }
-  if (leftKey > rightKey) {
-    return 1;
-  }
-  return 0;
-}
-
-function relink(blob: NoteBlob, parent: string | null): NoteBlob {
-  const payload = {
-    path: blob.path,
-    title: blob.title,
-    body: blob.body,
-    tags: blob.tags,
-    parent,
-    createdAt: blob.createdAt,
-    agent: blob.agent || null,
-    kind: 'note' as const,
-  };
-  return {
-    fingerprint: fingerprint(payload),
-    path: blob.path,
-    title: blob.title,
-    body: blob.body,
-    tags: blob.tags,
-    parent,
-    createdAt: blob.createdAt,
-    agent: blob.agent,
-    kind: 'note',
-  };
-}
-
 /**
  * Each clone may already have its own parent chain for one path. Rebuild a
  * single createdAt order so the older chain stays reachable from the tip.
@@ -309,42 +247,10 @@ function unifyChains(
   leftStart: string,
   rightStart: string,
 ): NoteBlob | undefined {
-  const chosen = new Map<string, NoteBlob>();
-  const blobs = readChain(store, leftStart).concat(
-    readChain(store, rightStart),
+  return unifyNoteBlobs(
+    store,
+    readChain(store, leftStart).concat(readChain(store, rightStart)),
   );
-  for (const blob of blobs) {
-    const key = versionKey(blob);
-    const current = chosen.get(key);
-    chosen.set(key, current ? preferVersion(current, blob) : blob);
-  }
-
-  const versions = Array.from(chosen.values()).sort(compareVersions);
-  if (versions.length === 0) {
-    return undefined;
-  }
-
-  const members = new Set<string>();
-  for (const blob of versions) {
-    members.add(blob.fingerprint);
-  }
-
-  let previous: string | null = null;
-  const oldestParent = versions[0].parent;
-  if (oldestParent && !members.has(oldestParent)) {
-    previous = oldestParent;
-  }
-
-  let tip: NoteBlob | undefined;
-  for (const blob of versions) {
-    const next = blob.parent === previous ? blob : relink(blob, previous);
-    if (next.fingerprint !== blob.fingerprint) {
-      writeNoteBlob(store, next);
-    }
-    previous = next.fingerprint;
-    tip = next;
-  }
-  return tip;
 }
 
 function copyFileIfPresent(from: string, to: string): void {
@@ -475,6 +381,8 @@ function publish(
   fs.mkdirSync(store.dir, { recursive: true });
   // Restacked notes leave the pre-fetch blob on disk. Publishing it makes the
   // other clone commit a deletion, and the next sync puts the blob back.
+  // Recover first so a blob dropped from the index is linked, not deleted.
+  recoverStoredNotes(store);
   pruneUnreachableLooseObjects(store);
   const env = envFor(store);
   gitOk(store.root, ['read-tree', '--empty'], env);
