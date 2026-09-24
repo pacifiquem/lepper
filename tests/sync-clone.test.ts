@@ -26,9 +26,7 @@ function assertMergedHistory(
     'bob-2',
   ]);
   for (let index = 0; index < history.length - 1; index += 1) {
-    expect(history[index].createdAt >= history[index + 1].createdAt).toBe(
-      true,
-    );
+    expect(history[index].createdAt >= history[index + 1].createdAt).toBe(true);
   }
 }
 
