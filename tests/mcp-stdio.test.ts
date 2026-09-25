@@ -2,8 +2,8 @@ import path from 'path';
 import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import { pathToFileURL } from 'url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { withLepper } from '../src/lib/api';
-import { readIndex } from '../src/lib/store';
+import { withLepper } from '../src/notes/session';
+import { readIndex } from '../src/utils/store';
 import { createGitRepo, createTempDir, mkdirp, removeTempDir } from './helpers';
 
 interface Rpc {

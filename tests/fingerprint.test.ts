@@ -3,7 +3,7 @@ import {
   canonicalize,
   fingerprint,
   shortFingerprint,
-} from '../src/lib/fingerprint';
+} from '../src/utils/fingerprint';
 
 describe('fingerprint', () => {
   it('is stable for key order', () => {

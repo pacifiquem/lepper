@@ -1,6 +1,6 @@
 import path from 'path';
 import { bench, describe } from 'vitest';
-import { normalizeProjectPath } from '../src/lib/paths';
+import { normalizeProjectPath } from '../src/utils/paths';
 
 const cwd = path.join('/tmp', 'lepper-bench-project');
 const absolute = path.join(cwd, 'src', 'commands');

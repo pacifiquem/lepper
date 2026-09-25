@@ -4,7 +4,7 @@ import {
   formatCliFailure,
   handleError,
   isCancelError,
-} from '../src/lib/errors';
+} from '../src/utils/errors';
 
 afterEach(() => {
   vi.restoreAllMocks();

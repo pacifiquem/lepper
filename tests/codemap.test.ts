@@ -1,10 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import blastCommand from '../src/commands/blast';
-import codeCommand from '../src/commands/code';
-import { blastRadius, codeMap } from '../src/lib/codemap';
-import { callTool } from '../src/mcp/server';
+import blastCommand from '../src/codemap/cli-blast';
+import codeCommand from '../src/codemap/cli-codemap';
+import { blastRadius, codeMap } from '../src/codemap';
+import { callTool } from '../src/mcp';
 import { createTempDir, removeTempDir } from './helpers';
 
 const dirs: string[] = [];

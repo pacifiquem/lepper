@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import diaryCommand from '../src/commands/diary';
-import { mergeDiary, recallDiary, writeDiaryEntry } from '../src/lib/diary';
-import { withLepper } from '../src/lib/api';
-import { readDiary } from '../src/lib/store';
-import { callTool } from '../src/mcp/server';
+import diaryCommand from '../src/diary/cli';
+import { mergeDiary, recallDiary, writeDiaryEntry } from '../src/diary/diary';
+import { withLepper } from '../src/notes/session';
+import { readDiary } from '../src/utils/store';
+import { callTool } from '../src/mcp';
 import { createGitRepo, removeTempDir } from './helpers';
 import { vi } from 'vitest';
 

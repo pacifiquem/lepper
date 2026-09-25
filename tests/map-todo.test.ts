@@ -1,8 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { withLepper } from '../src/lib/api';
-import { projectMap } from '../src/lib/map';
-import { recordNote } from '../src/lib/notes';
-import { addTodo, completeTodo, listTodos, startTodo } from '../src/lib/todos';
+import { withLepper } from '../src/notes/session';
+import { projectMap } from '../src/notes/map';
+import { recordNote } from '../src/notes/notes';
+import {
+  addTodo,
+  completeTodo,
+  listTodos,
+  startTodo,
+} from '../src/todos/todos';
 import { createGitRepo, mkdirp, removeTempDir } from './helpers';
 
 const dirs: string[] = [];

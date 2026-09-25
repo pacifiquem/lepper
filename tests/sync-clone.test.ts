@@ -1,11 +1,11 @@
 import path from 'path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { withLepper } from '../src/lib/api';
-import { git as gitResult } from '../src/lib/git';
-import { historyFor, recordNote } from '../src/lib/notes';
-import { readIndex } from '../src/lib/store';
-import { syncNotes } from '../src/lib/sync';
-import { LEPPER_REF } from '../src/lib/types';
+import { withLepper } from '../src/notes/session';
+import { git as gitResult } from '../src/utils/git';
+import { historyFor, recordNote } from '../src/notes/notes';
+import { readIndex } from '../src/utils/store';
+import { syncNotes } from '../src/notes/sync';
+import { LEPPER_REF } from '../src/utils/types';
 import {
   createGitRepo,
   createTempDir,

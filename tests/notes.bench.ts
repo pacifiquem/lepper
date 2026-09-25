@@ -1,6 +1,6 @@
 import { bench, describe } from 'vitest';
-import { fingerprint } from '../src/lib/fingerprint';
-import { tokenize } from '../src/lib/text';
+import { fingerprint } from '../src/utils/fingerprint';
+import { tokenize } from '../src/utils/text';
 
 const body =
   'Cache API results are in memory, they expire after 5 minutes. Entry point is store.ts';

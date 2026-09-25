@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { CliError } from '../src/lib/errors';
+import { CliError } from '../src/utils/errors';
 import {
   describeCommand,
   initCommand,
   profileCommand,
   verifyCommand,
-} from '../src/commands/deprecated';
+} from '../src/deprecated';
 import { createProgram } from '../src/cli';
 
 describe('deprecated commands', () => {

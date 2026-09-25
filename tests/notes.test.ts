@@ -1,9 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { withLepper } from '../src/lib/api';
-import { resolveGit } from '../src/lib/git';
-import { historyFor, listNotes, recordNote } from '../src/lib/notes';
+import { withLepper } from '../src/notes/session';
+import { resolveGit } from '../src/utils/git';
+import { historyFor, listNotes, recordNote } from '../src/notes/notes';
 import {
   createGitRepo,
   mkdirp,

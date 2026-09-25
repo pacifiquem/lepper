@@ -2,7 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { afterAll, beforeAll, bench, describe } from 'vitest';
-import { findUndescribedDirectories } from '../src/lib/scan';
+import { findUndescribedDirectories } from '../src/notes/directories';
 
 let cwd = '';
 const described: Record<string, string> = {};
