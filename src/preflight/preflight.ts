@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { blastRadius } from '../codemap';
 import { focusPath } from '../codemap/callgraph/graph';
-import { DEFAULT_DEPTH } from '../codemap/callgraph/scan';
+import { collectSourceFiles, DEFAULT_DEPTH } from '../codemap/callgraph/scan';
 import type { BlastRadius } from '../codemap/callgraph/types';
 import { getNote, listNotes } from '../notes/notes';
 import { listTodos } from '../todos/todos';
@@ -43,6 +43,7 @@ export interface PreflightReport {
     path: string;
     commit?: string;
     uncommitted: boolean;
+    bodies: string[];
   }>;
   verification: string[];
 }
@@ -70,18 +71,28 @@ function countLabel(count: number, singular: string, plural: string): string {
   return `  ${count} ${count === 1 ? singular : plural}`;
 }
 
+const TEST_DIRECTORIES = new Set([
+  'test',
+  'tests',
+  '__tests__',
+  'spec',
+  'specs',
+]);
+
 export function isTestPath(filePath: string): boolean {
-  const normalized = displayPath(filePath);
-  const base = normalized.split('/').pop() || '';
+  const normalized = displayPath(filePath).replace(/\\/g, '/');
+  const parts = normalized.split('/').filter((part) => part && part !== '.');
+  const base = parts[parts.length - 1] || '';
+  const directories = parts.slice(0, -1);
+  if (
+    directories.some((segment) => TEST_DIRECTORIES.has(segment.toLowerCase()))
+  ) {
+    return true;
+  }
   if (/(?:^|[._-])(?:test|spec)(?:[._-]|$)/i.test(base)) {
     return true;
   }
-  if (/Tests?\.java$/.test(base) || /_test\.(go|exs|erl|py)$/.test(base)) {
-    return true;
-  }
-  return (
-    normalized.includes('/__tests__/') || normalized.startsWith('__tests__/')
-  );
+  return /Tests?\.java$/.test(base) || /_test\.(go|exs|erl|py)$/.test(base);
 }
 
 function escapeRegExp(value: string): string {
@@ -126,10 +137,10 @@ function textMentions(text: string, target: PreflightTarget): boolean {
 }
 
 function pathApplies(notePath: string, targetPath: string): boolean {
-  if (notePath === targetPath) {
+  if (notePath === targetPath || notePath === '.') {
     return true;
   }
-  if (notePath !== '.' && targetPath.startsWith(`${notePath}/`)) {
+  if (targetPath.startsWith(`${notePath}/`)) {
     return true;
   }
   if (targetPath !== '.' && notePath.startsWith(`${targetPath}/`)) {
@@ -155,8 +166,8 @@ function specificity(notePath: string, targets: PreflightTarget[]): number {
     }
     if (notePath === target.path) {
       best = Math.max(best, 10000 + notePath.length);
-    } else if (target.path.startsWith(`${notePath}/`)) {
-      best = Math.max(best, notePath.length);
+    } else if (notePath === '.' || target.path.startsWith(`${notePath}/`)) {
+      best = Math.max(best, notePath === '.' ? 1 : notePath.length);
     } else if (notePath.startsWith(`${target.path}/`)) {
       best = Math.max(best, 5000 + notePath.length);
     }
@@ -178,8 +189,8 @@ function changedFiles(root: string): string[] {
       }
     }
   };
-  collect(['diff', '--name-only', 'HEAD']);
-  collect(['diff', '--name-only', '--cached']);
+  collect(['diff', '--name-only', '--no-renames', 'HEAD']);
+  collect(['diff', '--name-only', '--no-renames', '--cached']);
   collect(['ls-files', '--others', '--exclude-standard']);
   return Array.from(names).sort();
 }
@@ -220,6 +231,41 @@ function targetFromQuery(root: string, query: string): PreflightTarget {
   };
 }
 
+function blastQueries(
+  root: string,
+  target: PreflightTarget,
+): { queries: string[]; truncated: boolean } {
+  const single = target.symbol
+    ? target.path
+      ? `${displayPath(target.path)}#${target.symbol}`
+      : target.symbol
+    : target.path
+      ? displayPath(target.path)
+      : target.label;
+  if (!target.path || target.symbol) {
+    return { queries: [single], truncated: false };
+  }
+
+  const absolute = path.join(root, displayPath(target.path));
+  if (!fs.existsSync(absolute) || !fs.statSync(absolute).isDirectory()) {
+    return { queries: [single], truncated: false };
+  }
+
+  const collected = collectSourceFiles(root);
+  const prefix =
+    target.path === '.' ? './' : `${target.path.replace(/\/$/, '')}/`;
+  const inside = collected.files.filter((file) =>
+    target.path === '.' ? true : file.startsWith(prefix),
+  );
+  if (inside.length === 0) {
+    return { queries: [single], truncated: collected.truncated };
+  }
+  return {
+    queries: inside.map((file) => displayPath(file)),
+    truncated: collected.truncated,
+  };
+}
+
 function labelFromBlast(target: PreflightTarget, result: BlastRadius): string {
   if (target.path || target.label.includes('#')) {
     return target.label;
@@ -236,6 +282,47 @@ interface FileDrift {
   uncommitted: boolean;
 }
 
+function earliestTouch(
+  root: string,
+  relative: string,
+  noteTime: number,
+): { sha: string; time: number } | undefined {
+  const history = git(root, [
+    'log',
+    '--full-history',
+    '--format=%H%x09%cI',
+    '--',
+    relative,
+  ]);
+  if (history.status !== 0) {
+    return undefined;
+  }
+  let earliest: { sha: string; time: number } | undefined;
+  for (const line of history.stdout.split('\n')) {
+    const [sha, date] = line.split('\t');
+    if (!sha || !date) {
+      continue;
+    }
+    const time = Date.parse(date);
+    if (!Number.isFinite(time) || time <= noteTime) {
+      continue;
+    }
+    if (!earliest || time < earliest.time) {
+      earliest = { sha, time };
+    }
+  }
+  return earliest;
+}
+
+function treesDiffer(
+  root: string,
+  from: string,
+  to: string,
+  relative: string,
+): boolean {
+  return git(root, ['diff', '--quiet', from, to, '--', relative]).status === 1;
+}
+
 function driftSince(
   root: string,
   notePath: string,
@@ -243,40 +330,41 @@ function driftSince(
 ): FileDrift | null {
   const relative = displayPath(notePath);
   const absolute = path.join(root, relative);
-  if (fs.existsSync(absolute) && fs.statSync(absolute).isDirectory()) {
+  const noteTime = Date.parse(createdAt);
+  if (!Number.isFinite(noteTime)) {
     return null;
   }
 
-  const history = git(root, ['log', '--format=%H%x09%cI', '--', relative]);
-  const noteTime = Date.parse(createdAt);
-  let earliest: { sha: string; time: number } | undefined;
-  if (history.status === 0 && Number.isFinite(noteTime)) {
-    for (const line of history.stdout.split('\n')) {
-      const [sha, date] = line.split('\t');
-      if (!sha || !date) {
-        continue;
-      }
-      const time = Date.parse(date);
-      if (!Number.isFinite(time) || time <= noteTime) {
-        continue;
-      }
-      if (!earliest || time < earliest.time) {
-        earliest = { sha, time };
-      }
-    }
-  }
-
+  const baseline = git(root, [
+    'rev-list',
+    '-1',
+    `--before=${new Date(noteTime).toISOString()}`,
+    'HEAD',
+  ]);
+  const baselineSha =
+    baseline.status === 0 ? baseline.stdout.split('\n')[0] : '';
+  const committedChange =
+    baselineSha.length > 0 && treesDiffer(root, baselineSha, 'HEAD', relative);
+  const earliest = committedChange
+    ? earliestTouch(root, relative, noteTime)
+    : undefined;
   const status = git(root, ['status', '--porcelain', '--', relative]);
   const uncommitted = status.status === 0 && status.stdout.length > 0;
-  if (!earliest && !uncommitted) {
+  if (!committedChange && !uncommitted) {
     return null;
   }
-  if (!fs.existsSync(absolute) && history.status !== 0) {
+  let commit = earliest?.sha.slice(0, 7);
+  if (committedChange && !commit) {
+    const head = git(root, ['rev-parse', '--short=7', 'HEAD']);
+    commit =
+      head.status === 0 ? head.stdout.split('\n')[0] || undefined : undefined;
+  }
+  if (!fs.existsSync(absolute) && !commit && !uncommitted) {
     return null;
   }
   return {
-    commit: earliest ? earliest.sha.slice(0, 7) : undefined,
-    uncommitted: earliest ? false : uncommitted,
+    commit,
+    uncommitted: commit ? false : uncommitted,
   };
 }
 
@@ -322,34 +410,43 @@ export function preflightReport(
   const resolvedTargets: PreflightTarget[] = [];
 
   for (const target of targets) {
-    const blastQuery = target.symbol
-      ? target.path
-        ? `${displayPath(target.path)}#${target.symbol}`
-        : target.symbol
-      : target.path
-        ? displayPath(target.path)
-        : target.label;
-    const result = blastRadius(root, blastQuery, depth);
-    truncated = truncated || result.truncated;
-    ambiguous = ambiguous || result.ambiguous;
+    const expanded = blastQueries(root, target);
+    truncated = truncated || expanded.truncated;
+    let representative: BlastRadius | undefined;
+    for (const blastQuery of expanded.queries) {
+      const result = blastRadius(root, blastQuery, depth);
+      representative = representative || result;
+      truncated = truncated || result.truncated;
+      ambiguous = ambiguous || result.ambiguous;
+      for (const item of result.dependents) {
+        const key = `${item.via}\0${item.path}\0${item.name}\0${item.line}`;
+        if (seenDependents.has(key)) {
+          continue;
+        }
+        seenDependents.add(key);
+        dependents.push({ path: item.path, via: item.via });
+      }
+    }
+    const result = representative || {
+      query: target.label,
+      depth,
+      ambiguous: false,
+      truncated: false,
+      definitions: [],
+      dependents: [],
+    };
     const resolved: PreflightTarget = {
       ...target,
-      label: labelFromBlast(target, result),
+      label:
+        expanded.queries.length > 1
+          ? target.label
+          : labelFromBlast(target, result),
       path: target.path,
     };
     if (!resolved.path && result.definitions.length === 1) {
       resolved.path = result.definitions[0]?.path;
     }
     resolvedTargets.push(resolved);
-
-    for (const item of result.dependents) {
-      const key = `${item.via}\0${item.path}\0${item.name}\0${item.line}`;
-      if (seenDependents.has(key)) {
-        continue;
-      }
-      seenDependents.add(key);
-      dependents.push({ path: item.path, via: item.via });
-    }
   }
 
   const filePaths = new Set<string>();
@@ -385,13 +482,21 @@ export function preflightReport(
       ),
   );
 
+  const freshNotes: NoteBlob[] = [];
   const staleGroups = new Map<
     string,
-    { count: number; path: string; commit?: string; uncommitted: boolean }
+    {
+      count: number;
+      path: string;
+      commit?: string;
+      uncommitted: boolean;
+      bodies: string[];
+    }
   >();
   for (const note of contextNotes) {
     const drift = driftSince(root, note.path, note.createdAt);
     if (!drift) {
+      freshNotes.push(note);
       continue;
     }
     const shown = displayPath(note.path);
@@ -401,8 +506,10 @@ export function preflightReport(
       path: shown,
       commit: drift.commit,
       uncommitted: drift.uncommitted,
+      bodies: [],
     };
     current.count += 1;
+    current.bodies.push(oneLine(note.body));
     staleGroups.set(key, current);
   }
 
@@ -417,7 +524,7 @@ export function preflightReport(
       truncated,
       ambiguous,
     },
-    context: contextNotes.map((note) => ({
+    context: freshNotes.map((note) => ({
       path: displayPath(note.path),
       title: note.title,
       body: note.body,
@@ -488,6 +595,9 @@ export function formatPreflight(report: PreflightReport): string {
         ? `before commit ${item.commit}`
         : 'with uncommitted changes';
       lines.push(`  ${item.count} ${noun} based on ${item.path} ${when}`);
+      for (const body of item.bodies) {
+        lines.push(`    - ${body}`);
+      }
     }
   }
 
