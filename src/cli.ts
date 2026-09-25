@@ -7,6 +7,7 @@ import mapCommand from './notes/cli-map';
 import findCommand from './search/cli';
 import codeCommand from './codemap/cli-codemap';
 import blastCommand from './codemap/cli-blast';
+import preflightCommand from './preflight/cli';
 import diaryCommand from './diary/cli';
 import todoCommand from './todos/cli';
 import syncCommand from './notes/cli-sync';
@@ -24,7 +25,7 @@ export function createProgram(): Command {
   program
     .name('lepper')
     .description(
-      'Shared notes for AI agents working on a codebase. Record, map, find, codemap, blast, diary, and todo.',
+      'Shared notes for AI agents working on a codebase. Start with preflight, then record, map, find, codemap, blast, diary, and todo.',
     )
     .usage('command [options]')
     .version(
@@ -105,6 +106,29 @@ export function createProgram(): Command {
         json: options.json,
       });
     });
+
+  program
+    .command('preflight')
+    .description(
+      'What an agent should know before touching a file, symbol, or the current diff',
+    )
+    .argument('[target]', 'File, symbol, or path#symbol')
+    .option('--diff', 'Brief the files changed in the working tree')
+    .option('--depth <n>', 'Caller hops to follow', (value) => Number(value))
+    .option('--json', 'Print JSON')
+    .action(
+      (
+        target: string | undefined,
+        options: { diff?: boolean; depth?: number; json?: boolean },
+      ) => {
+        preflightCommand({
+          target,
+          diff: options.diff,
+          depth: options.depth,
+          json: options.json,
+        });
+      },
+    );
 
   program
     .command('find')

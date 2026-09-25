@@ -32,6 +32,7 @@ describe('deprecated commands', () => {
         'init',
         'map',
         'mcp',
+        'preflight',
         'profile',
         'record',
         'sync',

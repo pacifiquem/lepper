@@ -1,6 +1,7 @@
 import { projectCwd } from '../../utils/git';
 import { textResult, ToolResult } from '../params';
 import { blastTool } from './blast';
+import { preflightTool } from './preflight';
 import { codemapTool } from './codemap';
 import { diaryTool } from './diary';
 import { findTool } from './find';
@@ -11,6 +12,7 @@ import { todoTool } from './todo';
 import { McpTool, ToolSchema } from './types';
 
 const tools: McpTool[] = [
+  preflightTool,
   recordTool,
   mapTool,
   codemapTool,

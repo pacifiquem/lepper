@@ -1,6 +1,6 @@
 {
   "name": "lepper",
-  "description": "Shared notes, code maps, and blast radius for AI agents working on a codebase.",
+  "description": "Shared notes, preflight briefings, code maps, and blast radius for AI agents working on a codebase.",
   "version": "0.1.0",
   "bin": {
     "lepper": "./compiled/bin/lepper.js",

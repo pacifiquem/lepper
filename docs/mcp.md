@@ -99,6 +99,7 @@ Or `yarn mcp`.
 
 | Tool | Arguments | Purpose |
 | --- | --- | --- |
+| `preflight` | `target` or `diff: true`, optional `depth` | What to know before changing a file, symbol, or the current diff |
 | `record` | `path`, `note`, optional `title`, `tags`, `agent` | Save a note about a directory or file |
 | `map` | optional `path` | Overview of recorded notes, optionally focused |
 | `find` | `query`, optional `path`, `limit` | Natural-language search, e.g. "where is caching" |
@@ -111,9 +112,11 @@ Or `yarn mcp`.
 Example: after creating `src/cache`, call `record` with a note that the cache
 is in-memory, expires in five minutes, and starts at `store.ts`. Another agent
 can `find` "where is caching" and skip reading the implementation. Before
-changing `get`, call `blast` with `src/cache.js#get` and read the callers and
-importers that would break. `codemap` is the same graph, drawn from the caller
-side. At the start of a session, call `diary` with action `recall` and
+changing `get`, call `preflight` with `src/cache.js#get` (or `diff: true` for
+the working tree). That briefing collects notes, active todos, possibly stale
+notes, affected files, callers, tests, and files worth running. Call `blast`
+when you only need the affected set, and `codemap` for the caller-side graph.
+At the start of a session, call `diary` with action `recall` and
 follow what to keep doing and what to stop. When you finish, `write` one line
 of work plus what went well and what went wrong, then `sync`.
 

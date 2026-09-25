@@ -13,11 +13,14 @@ If an agent adds `src/cache`, it records something like:
 The next agent can `find "where is caching"` or `map src/cache` and get that
 context without reading the whole implementation.
 
-`lepper codemap` reads the source and shows what calls what. `lepper blast`
-answers the other direction: what would be affected if you changed a file or
-a symbol. The map covers the languages most used in the 2025 Stack Overflow
-survey: JavaScript, TypeScript, Python, Java, C#, C, C++, SQL, Bash, PowerShell,
-HTML, and CSS, plus Go, Rust, Elixir, and Erlang.
+`lepper preflight` is the briefing to read before touching code. It answers
+what an agent should know about a file, a symbol, or the current diff: recorded
+notes, active todos, notes that may be stale, what the change would affect,
+and which tests to run. `lepper blast` is the narrower question: what would
+be affected if you changed a file or a symbol. `lepper codemap` reads the
+source and shows what calls what. The map covers the languages most used in
+the 2025 Stack Overflow survey: JavaScript, TypeScript, Python, Java, C#, C,
+C++, SQL, Bash, PowerShell, HTML, and CSS, plus Go, Rust, Elixir, and Erlang.
 
 ## How it stores notes
 
@@ -55,7 +58,7 @@ repo or worktree path.
 Full client configs, tools, worktrees, and troubleshooting:
 [docs/mcp.md](docs/mcp.md).
 
-Tools: `record`, `map`, `find`, `codemap`, `blast`, `diary`, `todo`, `sync`.
+Tools: `preflight`, `record`, `map`, `find`, `codemap`, `blast`, `diary`, `todo`, `sync`.
 
 ## CLI
 
@@ -66,6 +69,8 @@ lepper record src/cache -n "In-memory API cache, 5 minute TTL, entry store.ts" -
 lepper map
 lepper map src/cache
 lepper find "where is caching"
+lepper preflight src/cache.js#get
+lepper preflight --diff
 lepper codemap
 lepper codemap src/cache --symbol get
 lepper blast src/cache.js#get
