@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   collectDirectories,
   findUndescribedDirectories,
-} from '../src/lib/scan';
+} from '../src/notes/directories';
 import { createTempDir, mkdirp, removeTempDir } from './helpers';
 
 const dirs: string[] = [];

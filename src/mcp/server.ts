@@ -1,27 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { withLepper } from '../lib/api';
-import { git, projectCwd } from '../lib/git';
-import {
-  blastRadius,
-  codeMap,
-  formatBlast,
-  formatCodeMap,
-} from '../lib/codemap';
-import { formatMap, projectMap } from '../lib/map';
-import {
-  formatDiary,
-  listDiary,
-  recallDiary,
-  writeDiaryEntry,
-} from '../lib/diary';
-import { getNote, historyFor, recordNote } from '../lib/notes';
-import { findNotes } from '../lib/search';
-import { normalizeProjectPath } from '../lib/paths';
-import { syncNotes } from '../lib/sync';
-import { addTodo, completeTodo, listTodos, startTodo } from '../lib/todos';
 import pkg from '../../package.json';
+import { git } from '../utils/git';
+import { takeMessage } from './framing';
+import { str, textResult } from './params';
+import { Framing, JsonRpcRequest } from './rpc';
+import { callTool, toolSchemas } from './tools';
 
 const MODERN_PROTOCOL_VERSION = '2026-07-28';
 const LEGACY_PROTOCOL_VERSIONS = [
@@ -38,400 +23,6 @@ const SUPPORTED_PROTOCOL_VERSIONS = [
 const INSTRUCTIONS =
   'Record what you learn about this repository so later agents can find it. At the start of a session, call diary with action recall and follow keep and stop before you work. Use find and map before rereading notes. Use codemap to see what calls what, and blast before changing a file or symbol so you can see what depends on it. When you finish, call diary with action write: one line of work, what went well, and what went wrong. Use sync after clone, and again after recording, to merge notes and the diary with other clones through refs/lepper/notes.';
 
-interface JsonRpcRequest {
-  jsonrpc?: string;
-  id?: string | number | null;
-  method?: string;
-  params?: Record<string, unknown>;
-  result?: unknown;
-  error?: unknown;
-}
-
-type ToolResult = {
-  content: Array<{ type: 'text'; text: string }>;
-  isError?: boolean;
-};
-
-type Framing = 'ndjson' | 'content-length';
-
-function textResult(value: unknown, isError = false): ToolResult {
-  const text =
-    typeof value === 'string' ? value : JSON.stringify(value, null, 2);
-  return { content: [{ type: 'text', text }], isError };
-}
-
-function str(params: Record<string, unknown> | undefined, key: string): string {
-  const value = params?.[key];
-  return value == null ? '' : String(value);
-}
-
-function num(
-  params: Record<string, unknown> | undefined,
-  key: string,
-): number | undefined {
-  const value = params?.[key];
-  if (value == null || value === '') {
-    return undefined;
-  }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function linesOf(
-  params: Record<string, unknown> | undefined,
-  key: string,
-): string[] {
-  const value = params?.[key];
-  if (Array.isArray(value)) {
-    return value.map((item) => String(item));
-  }
-  if (typeof value === 'string' && value.trim()) {
-    return [value];
-  }
-  return [];
-}
-
-function tagsOf(params: Record<string, unknown> | undefined): string[] {
-  const value = params?.tags;
-  if (Array.isArray(value)) {
-    return value.map((item) => String(item));
-  }
-  if (typeof value === 'string' && value.trim()) {
-    return value.split(',').map((item) => item.trim());
-  }
-  return [];
-}
-
-const readOnly = {
-  readOnlyHint: true,
-  destructiveHint: false,
-  idempotentHint: true,
-  openWorldHint: false,
-};
-
-const TOOLS = [
-  {
-    name: 'record',
-    description:
-      'Save a note about a directory or file so other agents can recover that context later without rereading the code. Use this when you learn what a path is for, how it works, or why it exists.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        path: {
-          type: 'string',
-          description: 'Project-relative path, for example src/cache',
-        },
-        note: {
-          type: 'string',
-          description:
-            'What this path is, why it exists, important behavior, and useful entry files',
-        },
-        title: { type: 'string', description: 'Optional short title' },
-        tags: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Optional tags such as cache, api, entrypoint',
-        },
-        agent: { type: 'string', description: 'Optional agent name' },
-      },
-      required: ['path', 'note'],
-    },
-  },
-  {
-    name: 'map',
-    description:
-      'Return an overview of recorded project notes, optionally scoped to a path. Use this to see the structure other agents have already documented.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        path: {
-          type: 'string',
-          description: 'Optional path prefix to focus the map',
-        },
-      },
-    },
-    annotations: readOnly,
-  },
-  {
-    name: 'codemap',
-    description:
-      'Read the source tree and return a map of what calls what. Covers JavaScript, TypeScript, Python, Java, C, C++, C#, SQL, Bash, PowerShell, HTML, CSS, Go, Rust, Elixir, and Erlang. Optional path focuses a file or directory. Optional symbol focuses one function, method, or class.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        path: {
-          type: 'string',
-          description: 'Optional file or directory to focus',
-        },
-        symbol: {
-          type: 'string',
-          description: 'Optional function, method, or class name',
-        },
-      },
-    },
-    annotations: readOnly,
-  },
-  {
-    name: 'blast',
-    description:
-      'Return the blast radius of a file or symbol: what calls it, what imports it, and the transitive dependents. Ask for this before changing code so a breaking change is visible. Target is a file, a symbol name, or path#symbol.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        target: {
-          type: 'string',
-          description:
-            'File path, symbol name, or path#symbol. Example: src/cache.js#get',
-        },
-        depth: {
-          type: 'number',
-          description: 'How many caller hops to follow. Default 4.',
-        },
-      },
-      required: ['target'],
-    },
-    annotations: readOnly,
-  },
-  {
-    name: 'find',
-    description:
-      'Find notes with a natural-language query such as "where is caching". Returns the matching note bodies so you do not need to read the implementation.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        query: { type: 'string', description: 'Natural-language search query' },
-        path: { type: 'string', description: 'Optional path scope' },
-        limit: { type: 'number', description: 'Maximum hits to return' },
-      },
-      required: ['query'],
-    },
-    annotations: readOnly,
-  },
-  {
-    name: 'diary',
-    description:
-      'Cross-session diary shared by every agent on this repo. Call action recall at the start of a session and follow keep and stop. Call action write when you finish: one line of work, what the user liked, and what they did not want.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        action: {
-          type: 'string',
-          enum: ['recall', 'list', 'write'],
-          description:
-            'recall is the default and the one to use at session start',
-        },
-        work: {
-          type: 'string',
-          description: 'One line describing what this session worked on',
-        },
-        well: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'What went well or what the user preferred',
-        },
-        wrong: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'What went wrong or what the user did not want',
-        },
-        agent: { type: 'string', description: 'Optional agent name' },
-        limit: {
-          type: 'number',
-          description: 'How many recent entries to read. Default 20.',
-        },
-      },
-    },
-  },
-  {
-    name: 'todo',
-    description:
-      'Share work-in-progress with other agents on this repo. Actions: add, list, start, done.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        action: {
-          type: 'string',
-          enum: ['add', 'list', 'start', 'claim', 'done'],
-          description: 'Todo action',
-        },
-        title: { type: 'string', description: 'Title for add' },
-        body: { type: 'string', description: 'Optional details for add' },
-        id: { type: 'string', description: 'Todo id for start or done' },
-        status: {
-          type: 'string',
-          enum: ['open', 'doing', 'done'],
-          description: 'Optional list filter',
-        },
-        agent: { type: 'string', description: 'Optional agent name' },
-      },
-      required: ['action'],
-    },
-  },
-  {
-    name: 'sync',
-    description:
-      'Fetch refs/lepper/notes from origin, merge those notes with this clone, and push the result. Run this after clone and after recording notes other people should see.',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-      additionalProperties: false,
-    },
-    annotations: {
-      readOnlyHint: false,
-      destructiveHint: false,
-      idempotentHint: true,
-      openWorldHint: true,
-    },
-  },
-];
-
-export function callTool(
-  name: string,
-  params: Record<string, unknown> = {},
-  cwd: string = projectCwd(),
-): ToolResult {
-  try {
-    if (name === 'record') {
-      const note = withLepper(cwd, (store) =>
-        recordNote(store, {
-          path: str(params, 'path'),
-          note: str(params, 'note'),
-          title: str(params, 'title') || undefined,
-          tags: tagsOf(params),
-          agent: str(params, 'agent') || undefined,
-        }),
-      );
-      return textResult({
-        ok: true,
-        path: note.path,
-        fingerprint: note.fingerprint,
-        parent: note.parent,
-        title: note.title,
-      });
-    }
-
-    if (name === 'map') {
-      return withLepper(cwd, (store) => {
-        const prefix = str(params, 'path')
-          ? normalizeProjectPath(str(params, 'path'), store.root)
-          : undefined;
-        const tree = projectMap(store, prefix);
-        const focused = prefix ? getNote(store, prefix) : undefined;
-        const history = prefix ? historyFor(store, prefix) : [];
-        return textResult({
-          map: formatMap(tree),
-          tree,
-          note: focused || null,
-          history: history.map((item) => ({
-            fingerprint: item.fingerprint,
-            createdAt: item.createdAt,
-            agent: item.agent,
-            title: item.title,
-          })),
-        });
-      });
-    }
-
-    if (name === 'codemap') {
-      const map = codeMap(cwd, {
-        path: str(params, 'path') || undefined,
-        symbol: str(params, 'symbol') || undefined,
-      });
-      return textResult({
-        map: formatCodeMap(map),
-        ...map,
-      });
-    }
-
-    if (name === 'blast') {
-      const result = blastRadius(
-        cwd,
-        str(params, 'target'),
-        num(params, 'depth'),
-      );
-      return textResult({
-        summary: formatBlast(result),
-        ...result,
-      });
-    }
-
-    if (name === 'find') {
-      const hits = withLepper(cwd, (store) =>
-        findNotes(store, {
-          query: str(params, 'query'),
-          path: str(params, 'path') || undefined,
-          limit: num(params, 'limit'),
-        }),
-      );
-      return textResult({ hits });
-    }
-
-    if (name === 'diary') {
-      const action = str(params, 'action') || 'recall';
-      const payload = withLepper(cwd, (store) => {
-        if (action === 'write' || action === 'add' || action === 'record') {
-          return writeDiaryEntry(store, {
-            work: str(params, 'work'),
-            wentWell: linesOf(params, 'well'),
-            wentWrong: linesOf(params, 'wrong'),
-            agent: str(params, 'agent') || undefined,
-          });
-        }
-        if (action === 'list') {
-          return listDiary(store, num(params, 'limit') ?? 20);
-        }
-        return {
-          brief: formatDiary(recallDiary(store, num(params, 'limit') ?? 20)),
-          ...recallDiary(store, num(params, 'limit') ?? 20),
-        };
-      });
-      return textResult(payload);
-    }
-
-    if (name === 'todo') {
-      const action = str(params, 'action') || 'list';
-      const payload = withLepper(cwd, (store) => {
-        if (action === 'add') {
-          return addTodo(store, {
-            title: str(params, 'title'),
-            body: str(params, 'body') || undefined,
-            agent: str(params, 'agent') || undefined,
-          });
-        }
-        if (action === 'start' || action === 'claim') {
-          return startTodo(
-            store,
-            str(params, 'id'),
-            str(params, 'agent') || undefined,
-          );
-        }
-        if (action === 'done') {
-          return completeTodo(
-            store,
-            str(params, 'id'),
-            str(params, 'agent') || undefined,
-          );
-        }
-        return listTodos(
-          store,
-          str(params, 'status') as 'open' | 'doing' | 'done' | undefined,
-        );
-      });
-      return textResult(payload);
-    }
-
-    if (name === 'sync') {
-      const result = withLepper(cwd, (store) => syncNotes(store.root));
-      return textResult(result);
-    }
-
-    return textResult(`Unknown tool: ${name}`, true);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return textResult(message, true);
-  }
-}
-
 let outputFraming: Framing = 'ndjson';
 let framingLocked = false;
 let sessionModern = false;
@@ -443,6 +34,17 @@ const pending = new Map<string, (result: unknown) => void>();
 
 function hasId(id: string | number | null | undefined): id is string | number {
   return id !== undefined && id !== null;
+}
+
+function writeMessage(message: unknown): void {
+  const json = JSON.stringify(message);
+  if (outputFraming === 'content-length') {
+    const payload = Buffer.from(json, 'utf8');
+    process.stdout.write(`Content-Length: ${payload.length}\r\n\r\n`);
+    process.stdout.write(payload);
+    return;
+  }
+  process.stdout.write(`${json}\n`);
 }
 
 function respond(
@@ -469,17 +71,6 @@ function respondError(
     id,
     error: data === undefined ? { code, message } : { code, message, data },
   });
-}
-
-function writeMessage(message: unknown): void {
-  const json = JSON.stringify(message);
-  if (outputFraming === 'content-length') {
-    const payload = Buffer.from(json, 'utf8');
-    process.stdout.write(`Content-Length: ${payload.length}\r\n\r\n`);
-    process.stdout.write(payload);
-    return;
-  }
-  process.stdout.write(`${json}\n`);
 }
 
 function negotiateLegacy(requested: string): string {
@@ -566,13 +157,6 @@ function toolArguments(
   return {};
 }
 
-function toolCwd(): string {
-  if (process.env.LEPPER_ROOT && process.env.LEPPER_ROOT.trim()) {
-    return pathResolve(process.env.LEPPER_ROOT);
-  }
-  return projectRoot || process.cwd();
-}
-
 function pathResolve(input: string): string {
   const resolved = path.resolve(input.trim());
   try {
@@ -580,6 +164,13 @@ function pathResolve(input: string): string {
   } catch {
     return resolved;
   }
+}
+
+function toolCwd(): string {
+  if (process.env.LEPPER_ROOT && process.env.LEPPER_ROOT.trim()) {
+    return pathResolve(process.env.LEPPER_ROOT);
+  }
+  return projectRoot || process.cwd();
 }
 
 function applyRoots(result: unknown): void {
@@ -717,7 +308,10 @@ async function handle(message: JsonRpcRequest): Promise<void> {
   }
 
   if (method === 'tools/list') {
-    respond(id, withResultType({ tools: TOOLS }, wantsModern(params), true));
+    respond(
+      id,
+      withResultType({ tools: toolSchemas() }, wantsModern(params), true),
+    );
     return;
   }
 
@@ -763,82 +357,6 @@ async function handle(message: JsonRpcRequest): Promise<void> {
   respondError(id, -32601, `Method not found: ${method}`);
 }
 
-interface Taken {
-  message: JsonRpcRequest;
-  framing: Framing;
-  rest: Buffer;
-}
-
-function headerSplit(buffer: Buffer): { header: string; start: number } | null {
-  const crlf = buffer.indexOf('\r\n\r\n');
-  const lf = buffer.indexOf('\n\n');
-  if (crlf === -1 && lf === -1) {
-    return null;
-  }
-  if (crlf !== -1 && (lf === -1 || crlf <= lf)) {
-    return {
-      header: buffer.slice(0, crlf).toString('utf8'),
-      start: crlf + 4,
-    };
-  }
-  return {
-    header: buffer.slice(0, lf).toString('utf8'),
-    start: lf + 2,
-  };
-}
-
-function takeMessage(buffer: Buffer): Taken | null {
-  const preview = buffer
-    .slice(0, 80)
-    .toString('utf8')
-    .trimStart()
-    .toLowerCase();
-  if (
-    preview.startsWith('content-length:') ||
-    preview.startsWith('content-type:')
-  ) {
-    const split = headerSplit(buffer);
-    if (!split) {
-      return null;
-    }
-    const match = split.header.match(/content-length:\s*(\d+)/i);
-    if (!match) {
-      return {
-        message: { method: '' },
-        framing: 'content-length',
-        rest: buffer.slice(split.start),
-      };
-    }
-    const length = Number(match[1]);
-    if (buffer.length < split.start + length) {
-      return null;
-    }
-    const body = buffer
-      .slice(split.start, split.start + length)
-      .toString('utf8');
-    return {
-      message: JSON.parse(body) as JsonRpcRequest,
-      framing: 'content-length',
-      rest: buffer.slice(split.start + length),
-    };
-  }
-
-  const nl = buffer.indexOf(0x0a);
-  if (nl === -1) {
-    return null;
-  }
-  const line = buffer.slice(0, nl).toString('utf8').replace(/\r$/, '').trim();
-  const rest = buffer.slice(nl + 1);
-  if (!line) {
-    return { message: { method: '' }, framing: 'ndjson', rest };
-  }
-  return {
-    message: JSON.parse(line) as JsonRpcRequest,
-    framing: 'ndjson',
-    rest,
-  };
-}
-
 export async function startMcpServer(): Promise<void> {
   let buffer = Buffer.alloc(0);
   let handlers = Promise.resolve();
@@ -864,8 +382,9 @@ export async function startMcpServer(): Promise<void> {
   };
 
   const drain = (): void => {
-    while (buffer.length > 0) {
-      let taken: Taken | null = null;
+    let reading = true;
+    while (reading && buffer.length > 0) {
+      let taken: ReturnType<typeof takeMessage> = null;
       try {
         taken = takeMessage(buffer);
       } catch (error) {
@@ -876,7 +395,8 @@ export async function startMcpServer(): Promise<void> {
         continue;
       }
       if (!taken) {
-        return;
+        reading = false;
+        continue;
       }
       buffer = taken.rest;
       if (!taken.message.method && taken.message.id == null) {

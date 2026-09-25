@@ -4,14 +4,14 @@ import os from 'os';
 import path from 'path';
 import { spawn } from 'child_process';
 import { afterEach, describe, expect, it } from 'vitest';
-import { withLepper } from '../src/lib/api';
-import { withStoreLock } from '../src/lib/lock';
+import { withLepper } from '../src/notes/session';
+import { withStoreLock } from '../src/utils/lock';
 import {
   historyFor,
   listNotes,
   recordNote,
   recoverStoredNotes,
-} from '../src/lib/notes';
+} from '../src/notes/notes';
 import {
   openStore,
   pruneUnreachableLooseObjects,
@@ -19,8 +19,8 @@ import {
   readNoteBlob,
   writeIndex,
   writeNoteBlob,
-} from '../src/lib/store';
-import { NoteBlob } from '../src/lib/types';
+} from '../src/utils/store';
+import { NoteBlob } from '../src/utils/types';
 import { createGitRepo, mkdirp, removeTempDir } from './helpers';
 
 const dirs: string[] = [];
@@ -151,10 +151,10 @@ describe('concurrent record', () => {
               script,
               [
                 `import { withLepper } from ${JSON.stringify(
-                  path.join(root, 'src/lib/api.ts'),
+                  path.join(root, 'src/notes/session.ts'),
                 )};`,
                 `import { recordNote } from ${JSON.stringify(
-                  path.join(root, 'src/lib/notes.ts'),
+                  path.join(root, 'src/notes/notes.ts'),
                 )};`,
                 `withLepper(${JSON.stringify(cwd)}, (store) => {`,
                 '  recordNote(store, {',

@@ -1,11 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { withLepper } from '../src/lib/api';
-import { resolveGit } from '../src/lib/git';
-import { recordNote } from '../src/lib/notes';
-import { findNotes } from '../src/lib/search';
-import { SEARCH_ANALYZER, SearchIndex } from '../src/lib/types';
+import { withLepper } from '../src/notes/session';
+import { resolveGit } from '../src/utils/git';
+import { recordNote } from '../src/notes/notes';
+import { findNotes } from '../src/search/search';
+import { SEARCH_ANALYZER, SearchIndex } from '../src/utils/types';
 import { createGitRepo, mkdirp, removeTempDir } from './helpers';
 
 const dirs: string[] = [];

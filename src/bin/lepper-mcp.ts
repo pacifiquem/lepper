@@ -1,5 +1,5 @@
 #!/usr/bin/env node
 
-import { startMcpServer } from '../mcp/server';
+import { startMcpServer } from '../mcp';
 
 void startMcpServer();

@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { blastRadius, codeMap } from '../src/lib/codemap';
+import { blastRadius, codeMap } from '../src/codemap';
 import {
   keywordsForExtension,
   supportedExtensions,
-} from '../src/lib/languages/registry';
+} from '../src/codemap/languages/registry';
 import { createTempDir, removeTempDir } from './helpers';
 import fs from 'fs';
 import path from 'path';

@@ -1,11 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { withLepper } from '../src/lib/api';
-import { historyFor, recordNote } from '../src/lib/notes';
-import { LEPPER_REF } from '../src/lib/types';
-import { packLooseObjects, readIndex } from '../src/lib/store';
-import { syncNotes } from '../src/lib/sync';
+import { withLepper } from '../src/notes/session';
+import { historyFor, recordNote } from '../src/notes/notes';
+import { LEPPER_REF } from '../src/utils/types';
+import { packLooseObjects, readIndex } from '../src/utils/store';
+import { syncNotes } from '../src/notes/sync';
 import { createGitRepo, git, mkdirp, removeTempDir } from './helpers';
 
 const dirs: string[] = [];

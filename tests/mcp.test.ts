@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { callTool } from '../src/mcp/server';
+import { callTool } from '../src/mcp';
 import { createGitRepo, mkdirp, removeTempDir } from './helpers';
 
 const dirs: string[] = [];

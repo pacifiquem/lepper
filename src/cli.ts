@@ -1,22 +1,22 @@
 import { Command } from 'commander';
 import pkg from '../package.json';
 import process from 'process';
-import { handleError } from './lib/errors';
-import recordCommand from './commands/record';
-import mapCommand from './commands/map';
-import findCommand from './commands/find';
-import codeCommand from './commands/code';
-import blastCommand from './commands/blast';
-import diaryCommand from './commands/diary';
-import todoCommand from './commands/todo';
-import syncCommand from './commands/sync';
+import { handleError } from './utils/errors';
+import recordCommand from './notes/cli-record';
+import mapCommand from './notes/cli-map';
+import findCommand from './search/cli';
+import codeCommand from './codemap/cli-codemap';
+import blastCommand from './codemap/cli-blast';
+import diaryCommand from './diary/cli';
+import todoCommand from './todos/cli';
+import syncCommand from './notes/cli-sync';
 import {
   describeCommand,
   initCommand,
   profileCommand,
   verifyCommand,
-} from './commands/deprecated';
-import { startMcpServer } from './mcp/server';
+} from './deprecated';
+import { startMcpServer } from './mcp';
 
 export function createProgram(): Command {
   const program = new Command();

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { projectCwd, resolveGit } from '../src/lib/git';
+import { projectCwd, resolveGit } from '../src/utils/git';
 import { addWorktree, createGitRepo, removeTempDir } from './helpers';
 
 const dirs: string[] = [];

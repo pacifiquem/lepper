@@ -2,13 +2,13 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { describe, expect, it } from 'vitest';
-import { CliError } from '../src/lib/errors';
+import { CliError } from '../src/utils/errors';
 import {
   isIgnoredDirName,
   normalizeDirectoryMap,
   normalizeProjectPath,
   readIgnoredDirNames,
-} from '../src/lib/paths';
+} from '../src/utils/paths';
 
 const cwd = path.join('/tmp', 'lepper-project');
 

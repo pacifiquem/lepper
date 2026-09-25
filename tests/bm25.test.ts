@@ -4,8 +4,8 @@ import {
   bm25Score,
   bm25TermWeight,
   type Bm25Stats,
-} from '../src/lib/bm25';
-import { stem, tokenize } from '../src/lib/text';
+} from '../src/search/bm25';
+import { stem, tokenize } from '../src/utils/text';
 
 const stats: Bm25Stats = {
   docCount: 4,
