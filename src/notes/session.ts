@@ -1,4 +1,5 @@
 import { ensureMigrated } from './migrate';
+import { followMovedPaths } from './follow';
 import { withStore, Store } from '../utils/store';
 
 export function withLepper<T>(
@@ -11,6 +12,7 @@ export function withLepper<T>(
     (store) => {
       if (create) {
         ensureMigrated(store);
+        followMovedPaths(store);
       }
       return fn(store);
     },

@@ -4,7 +4,7 @@ import path from 'path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { callTool } from '../src/mcp';
 import { withLepper } from '../src/notes/session';
-import { recordNote } from '../src/notes/notes';
+import { listNotes, recordNote, recoverStoredNotes } from '../src/notes/notes';
 import preflightCommand from '../src/preflight/cli';
 import {
   formatPreflight,
@@ -490,6 +490,104 @@ export function charge() {
     expect(report.context).toEqual([]);
     expect(report.stale.map((item) => item.path)).toEqual(['src/payments']);
     expect(report.stale[0]?.uncommitted).toBe(true);
+  });
+
+  it('follows a folder note when the folder is renamed and the code is unchanged', () => {
+    const root = createGitRepo();
+    dirs.push(root);
+    write(
+      root,
+      'src/payments/retry.js',
+      `export function charge(id) {
+  return id;
+}
+`,
+    );
+    git(root, ['add', '.']);
+    git(root, ['commit', '-m', 'add payments']);
+    withLepper(root, (store) =>
+      recordNote(store, {
+        path: 'src/payments',
+        note: 'Retry logic counts a payment as failed after 5 retries.',
+      }),
+    );
+    git(root, ['mv', 'src/payments', 'src/billing']);
+
+    const moved = withLepper(root, (store) => {
+      recoverStoredNotes(store);
+      return {
+        notes: listNotes(store).map((note) => note.path),
+        report: preflightReport(root, store, {
+          target: 'src/billing/retry.js',
+        }),
+      };
+    });
+    expect(moved.notes).toEqual(['./src/billing']);
+    expect(moved.report.stale).toEqual([]);
+    expect(moved.report.context.map((note) => note.body)).toEqual([
+      'Retry logic counts a payment as failed after 5 retries.',
+    ]);
+
+    write(
+      root,
+      'src/billing/retry.js',
+      `export function charge(id) {
+  return id + 1;
+}
+`,
+    );
+    git(root, ['add', '.']);
+    commitAt(root, 'change retry', '2099-01-01T00:00:00Z');
+    const sha = git(root, ['rev-parse', '--short=7', 'HEAD']);
+    const drifted = withLepper(root, (store) =>
+      preflightReport(root, store, { target: 'src/billing' }),
+    );
+    expect(drifted.context).toEqual([]);
+    expect(drifted.stale).toEqual([
+      {
+        count: 1,
+        path: 'src/billing',
+        commit: sha,
+        uncommitted: false,
+        bodies: ['Retry logic counts a payment as failed after 5 retries.'],
+      },
+    ]);
+  });
+
+  it('follows a file note when the file is moved without git mv', () => {
+    const root = createGitRepo();
+    dirs.push(root);
+    write(
+      root,
+      'src/payments/retry.js',
+      `export function charge(id) {
+  return id;
+}
+`,
+    );
+    git(root, ['add', '.']);
+    git(root, ['commit', '-m', 'add payments']);
+    withLepper(root, (store) =>
+      recordNote(store, {
+        path: 'src/payments/retry.js',
+        note: 'Retry logic counts a payment as failed after 5 retries.',
+      }),
+    );
+    fs.mkdirSync(path.join(root, 'src/billing'), { recursive: true });
+    fs.renameSync(
+      path.join(root, 'src/payments/retry.js'),
+      path.join(root, 'src/billing/retry.js'),
+    );
+
+    const moved = withLepper(root, (store) => ({
+      notes: listNotes(store).map((note) => note.path),
+      report: preflightReport(root, store, { target: 'src/billing/retry.js' }),
+    }));
+    expect(moved.notes).toEqual(['./src/billing/retry.js']);
+    expect(moved.report.stale).toEqual([]);
+    expect(moved.report.context.map((note) => note.body)).toEqual([
+      'Retry logic counts a payment as failed after 5 retries.',
+    ]);
   });
 
   it('applies a repository-root note to a nested file that later changes', () => {

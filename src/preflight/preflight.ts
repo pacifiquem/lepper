@@ -8,6 +8,12 @@ import { getNote, listNotes } from '../notes/notes';
 import { listTodos } from '../todos/todos';
 import { CliError } from '../utils/errors';
 import { git } from '../utils/git';
+import {
+  changesSince,
+  clearRenameCache,
+  diffChanges,
+  materialChanges,
+} from '../utils/renames';
 import type { Store } from '../utils/store';
 import type { NoteBlob, TodoItem } from '../utils/types';
 
@@ -314,15 +320,6 @@ function earliestTouch(
   return earliest;
 }
 
-function treesDiffer(
-  root: string,
-  from: string,
-  to: string,
-  relative: string,
-): boolean {
-  return git(root, ['diff', '--quiet', from, to, '--', relative]).status === 1;
-}
-
 function driftSince(
   root: string,
   notePath: string,
@@ -343,28 +340,30 @@ function driftSince(
   ]);
   const baselineSha =
     baseline.status === 0 ? baseline.stdout.split('\n')[0] : '';
-  const committedChange =
-    baselineSha.length > 0 && treesDiffer(root, baselineSha, 'HEAD', relative);
-  const earliest = committedChange
-    ? earliestTouch(root, relative, noteTime)
-    : undefined;
-  const status = git(root, ['status', '--porcelain', '--', relative]);
-  const uncommitted = status.status === 0 && status.stdout.length > 0;
-  if (!committedChange && !uncommitted) {
+  const committed = baselineSha
+    ? materialChanges(notePath, diffChanges(root, baselineSha, 'HEAD'))
+    : materialChanges(notePath, changesSince(root, createdAt));
+  const uncommittedChanges = materialChanges(
+    notePath,
+    diffChanges(root, 'HEAD'),
+  );
+  if (committed.length === 0 && uncommittedChanges.length === 0) {
     return null;
   }
+  const earliest =
+    committed.length > 0 ? earliestTouch(root, relative, noteTime) : undefined;
   let commit = earliest?.sha.slice(0, 7);
-  if (committedChange && !commit) {
+  if (committed.length > 0 && !commit) {
     const head = git(root, ['rev-parse', '--short=7', 'HEAD']);
     commit =
       head.status === 0 ? head.stdout.split('\n')[0] || undefined : undefined;
   }
-  if (!fs.existsSync(absolute) && !commit && !uncommitted) {
+  if (!fs.existsSync(absolute) && !commit && uncommittedChanges.length === 0) {
     return null;
   }
   return {
     commit,
-    uncommitted: commit ? false : uncommitted,
+    uncommitted: commit ? false : true,
   };
 }
 
@@ -384,6 +383,7 @@ export function preflightReport(
     );
   }
 
+  clearRenameCache();
   const depth = options.depth ?? DEFAULT_DEPTH;
   let targets: PreflightTarget[];
   let query: string;

@@ -6,7 +6,7 @@ import { withLepper } from '../src/notes/session';
 import checkCommand from '../src/rules/cli-check';
 import { checkRules } from '../src/rules/check';
 import { addRule, listRules, removeRule } from '../src/rules/rules';
-import { createGitRepo, removeTempDir } from './helpers';
+import { createGitRepo, git, removeTempDir } from './helpers';
 
 const dirs: string[] = [];
 
@@ -26,6 +26,41 @@ function write(root: string, relative: string, body: string): void {
 }
 
 describe('architecture rules', () => {
+  it('follows a rule path when that folder is renamed without a content change', () => {
+    const root = createGitRepo();
+    dirs.push(root);
+    write(
+      root,
+      'src/payments/stripe.js',
+      `export function charge(id) {
+  return id;
+}
+`,
+    );
+    write(
+      root,
+      'src/controllers/pay.js',
+      `export function pay(id) {
+  return id;
+}
+`,
+    );
+    git(root, ['add', '.']);
+    git(root, ['commit', '-m', 'add boundary']);
+    withLepper(root, (store) =>
+      addRule(store, {
+        from: 'src/controllers',
+        to: 'src/payments',
+        note: 'Do not call Stripe from controllers.',
+      }),
+    );
+    git(root, ['mv', 'src/payments', 'src/billing']);
+    const followed = withLepper(root, (store) => listRules(store));
+    expect(followed.map((rule) => [rule.from, rule.to])).toEqual([
+      ['./src/controllers', './src/billing'],
+    ]);
+  });
+
   it('accepts a boundary until a controller imports across it', () => {
     const root = createGitRepo();
     dirs.push(root);

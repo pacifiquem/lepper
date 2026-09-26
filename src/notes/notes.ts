@@ -206,6 +206,12 @@ export function recoverStoredNotes(store: Store): boolean {
   const notes = { ...index.notes };
   let changed = false;
   for (const [pathKey, group] of Array.from(byPath.entries())) {
+    // A rename keeps the old path on the parent chain. Those blobs already
+    // belong to the tip at the new path, so they must not recreate the old key.
+    const loose = group.filter((blob) => !onChain.has(blob.fingerprint));
+    if (loose.length === 0 && !notes[pathKey]) {
+      continue;
+    }
     const tip = unifyNoteBlobs(store, group, onChain);
     if (!tip) {
       continue;

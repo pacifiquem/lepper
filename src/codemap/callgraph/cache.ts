@@ -3,8 +3,9 @@ import fs from 'fs';
 import path from 'path';
 import { parseSource } from '../languages/registry';
 import { CliError } from '../../utils/errors';
-import { resolveGit } from '../../utils/git';
+import { git, resolveGit } from '../../utils/git';
 import { withStoreLock } from '../../utils/lock';
+import { diffChanges, dotPath, renameMap } from '../../utils/renames';
 import type { Binding, FileFacts, Graph } from './types';
 
 /**
@@ -22,6 +23,8 @@ interface CacheEntry {
 interface CacheIndex {
   version: number;
   root: string;
+  /** Commit the cached paths were scanned against. Renames since this commit retarget entries. */
+  head: string | null;
   files: Record<string, CacheEntry>;
 }
 
@@ -49,7 +52,15 @@ export function clearGraphCacheMemory(): void {
 }
 
 function emptyIndex(root: string): CacheIndex {
-  return { version: GRAPH_CACHE_VERSION, root, files: {} };
+  return { version: GRAPH_CACHE_VERSION, root, head: null, files: {} };
+}
+
+function headCommit(root: string): string | null {
+  const result = git(root, ['rev-parse', 'HEAD']);
+  if (result.status !== 0 || !result.stdout) {
+    return null;
+  }
+  return result.stdout.split('\n')[0] || null;
 }
 
 function cloneFacts(file: FileFacts): FileFacts {
@@ -144,7 +155,12 @@ function readIndex(dir: string, root: string): CacheIndex {
         files[filePath] = entry;
       }
     }
-    return { version: GRAPH_CACHE_VERSION, root, files };
+    return {
+      version: GRAPH_CACHE_VERSION,
+      root,
+      head: typeof parsed.head === 'string' ? parsed.head : null,
+      files,
+    };
   } catch {
     return emptyIndex(root);
   }
@@ -271,6 +287,46 @@ function pruneFacts(dir: string, keep: Set<string>): void {
   }
 }
 
+function retargetRenamedFiles(
+  root: string,
+  index: CacheIndex,
+  live: Set<string>,
+): boolean {
+  if (!index.head) {
+    return false;
+  }
+  const renames = renameMap([
+    ...diffChanges(root, index.head, 'HEAD'),
+    ...diffChanges(root, 'HEAD'),
+  ]);
+  let dirty = false;
+  for (const [fromGit, toGit] of renames) {
+    const from = dotPath(fromGit);
+    const to = dotPath(toGit);
+    const entry = index.files[from];
+    if (!entry || index.files[to] || !live.has(to) || live.has(from)) {
+      continue;
+    }
+    let stat: fs.Stats;
+    try {
+      stat = fs.statSync(path.join(root, toGit));
+    } catch {
+      continue;
+    }
+    if (stat.size !== entry.size) {
+      continue;
+    }
+    index.files[to] = {
+      hash: entry.hash,
+      size: stat.size,
+      mtimeMs: stat.mtimeMs === entry.mtimeMs ? entry.mtimeMs : -1,
+    };
+    delete index.files[from];
+    dirty = true;
+  }
+  return dirty;
+}
+
 function signatureFor(
   truncated: boolean,
   parts: Array<{ path: string; hash: string }>,
@@ -294,7 +350,7 @@ function gather(
   const nextFiles: Record<string, CacheEntry> = {};
   const facts: FileFacts[] = [];
   const parts: Array<{ path: string; hash: string }> = [];
-  let dirty = false;
+  let dirty = retargetRenamedFiles(root, index, new Set(collected.files));
 
   for (const filePath of collected.files) {
     const absolute = path.join(root, filePath.replace(/^\.\//, ''));
@@ -378,6 +434,11 @@ function gather(
   }
 
   index.files = nextFiles;
+  const head = headCommit(root);
+  if (index.head !== head) {
+    index.head = head;
+    dirty = true;
+  }
   return {
     facts,
     signature: signatureFor(collected.truncated, parts),

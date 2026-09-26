@@ -2,6 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { mergeDiary, sameDiary } from '../diary/diary';
+import { followMovedPaths } from './follow';
 import { git, gitOk, hasRemote } from '../utils/git';
 import {
   rebuildSearchIndex,
@@ -508,6 +509,9 @@ export function syncNotes(cwd: string = process.cwd()): SyncResult {
     if (remote) {
       contentChanged = pullRemote(store, remote);
       pulled = true;
+    }
+    if (followMovedPaths(store)) {
+      contentChanged = true;
     }
 
     if (!remote || contentChanged) {

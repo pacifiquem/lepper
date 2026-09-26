@@ -5,7 +5,7 @@ import { clearGraphCacheMemory } from '../src/codemap/callgraph/cache';
 import { buildGraph } from '../src/codemap/callgraph/graph';
 import { codeMap } from '../src/codemap';
 import { withLepper } from '../src/notes/session';
-import { createGitRepo, createTempDir, removeTempDir } from './helpers';
+import { createGitRepo, createTempDir, git, removeTempDir } from './helpers';
 
 const dirs: string[] = [];
 
@@ -262,6 +262,38 @@ export function extra() {
     );
     const scanned = withLepper(root, () => buildGraph(root).filesScanned);
     expect(scanned).toBe(1);
+  });
+
+  it('keeps parsed facts when a file is renamed without a content change', () => {
+    const root = createGitRepo();
+    dirs.push(root);
+    write(
+      root,
+      'src/payments/retry.js',
+      `export function charge(id) {
+  return id;
+}
+`,
+    );
+    git(root, ['add', '.']);
+    git(root, ['commit', '-m', 'add payments']);
+    buildGraph(root);
+    const before = readIndex(root);
+    const hash = before.files['./src/payments/retry.js'].hash;
+    const blob = factFile(root, hash);
+    const stale = new Date('2020-01-01T00:00:00Z');
+    fs.utimesSync(blob, stale, stale);
+
+    git(root, ['mv', 'src/payments', 'src/billing']);
+    clearGraphCacheMemory();
+    const names = codeMap(root).symbols.map(
+      (symbol) => `${symbol.path}#${symbol.name}`,
+    );
+    expect(names).toContain('./src/billing/retry.js#charge');
+    const after = readIndex(root);
+    expect(after.files['./src/payments/retry.js']).toBeUndefined();
+    expect(after.files['./src/billing/retry.js'].hash).toBe(hash);
+    expect(fs.statSync(blob).mtimeMs).toBe(stale.getTime());
   });
 
   it('keeps working outside a git repository', () => {
