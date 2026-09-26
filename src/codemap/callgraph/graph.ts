@@ -1,9 +1,9 @@
-import fs from 'fs';
 import path from 'path';
 import { CliError } from '../../utils/errors';
-import { supportedExtensions, parseSource } from '../languages/registry';
+import { supportedExtensions } from '../languages/registry';
 import { moduleFiles } from '../languages/shared/modules';
 import { normalizeProjectPath } from '../../utils/paths';
+import { withCachedFacts } from './cache';
 import { collectSourceFiles } from './scan';
 import type {
   CallSite,
@@ -144,23 +144,16 @@ export function symbolId(filePath: string, symbol: LocalSymbol): string {
 
 export function buildGraph(root: string): Graph {
   const collected = collectSourceFiles(root);
-  const known = new Set(collected.files);
-  const facts: FileFacts[] = [];
+  return withCachedFacts(root, collected, (facts) =>
+    assembleGraph(collected, facts),
+  );
+}
 
-  for (const filePath of collected.files) {
-    const absolute = path.join(root, filePath.replace(/^\.\//, ''));
-    let source = '';
-    try {
-      source = fs.readFileSync(absolute, 'utf8');
-    } catch {
-      continue;
-    }
-    const parsed = parseSource(filePath, source);
-    if (!parsed) {
-      continue;
-    }
-    facts.push({ path: filePath, ...parsed });
-  }
+function assembleGraph(
+  collected: { files: string[]; truncated: boolean },
+  facts: FileFacts[],
+): Graph {
+  const known = new Set(collected.files);
 
   const symbols = new Map<string, CodeSymbol>();
   const byFile = new Map<string, string[]>();

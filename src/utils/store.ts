@@ -44,7 +44,7 @@ export function openStore(cwd: string = process.cwd(), create = true): Store {
   // index.git lives in this directory, so `git add -A` also sees the lock
   // file git creates beside it. That lock must not enter the notes tree.
   const ignore =
-    'LOCK\nLOCK.stale-*\n*.tmp\n*.lock\nindex.git\nfetch.index\nMIGRATED\n';
+    'LOCK\nLOCK.stale-*\n*.tmp\n*.lock\nindex.git\nfetch.index\nMIGRATED\ngraph/\n';
   if (
     !fs.existsSync(ignoreFile) ||
     fs.readFileSync(ignoreFile, 'utf8') !== ignore
