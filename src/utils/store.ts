@@ -12,6 +12,7 @@ import {
   NoteBlob,
   SearchIndex,
   STORE_VERSION,
+  RuleIndex,
   TodoIndex,
 } from './types';
 
@@ -70,6 +71,10 @@ function diaryPath(store: Store): string {
   return path.join(store.dir, 'diary.json');
 }
 
+function rulesPath(store: Store): string {
+  return path.join(store.dir, 'rules.json');
+}
+
 function objectPath(store: Store, fingerprint: string): string {
   return path.join(
     store.dir,
@@ -105,6 +110,14 @@ function emptyDiary(): DiaryIndex {
     version: STORE_VERSION,
     updatedAt: new Date().toISOString(),
     entries: {},
+  };
+}
+
+function emptyRules(): RuleIndex {
+  return {
+    version: STORE_VERSION,
+    updatedAt: new Date().toISOString(),
+    rules: {},
   };
 }
 
@@ -181,6 +194,18 @@ export function writeTodos(store: Store, index: TodoIndex): void {
   index.version = STORE_VERSION;
   index.updatedAt = new Date().toISOString();
   writeJsonFile(todosPath(store), index);
+}
+
+export function readRules(store: Store): RuleIndex {
+  const index = readJsonFile(rulesPath(store), emptyRules());
+  index.rules = index.rules || {};
+  return index;
+}
+
+export function writeRules(store: Store, index: RuleIndex): void {
+  index.version = STORE_VERSION;
+  index.updatedAt = new Date().toISOString();
+  writeJsonFile(rulesPath(store), index);
 }
 
 export function writeNoteBlob(store: Store, note: NoteBlob): void {

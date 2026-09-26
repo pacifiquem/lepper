@@ -107,6 +107,8 @@ Or `yarn mcp`.
 | `blast` | `target`, optional `depth` | What depends on a file or symbol (`path`, `name`, or `path#symbol`) |
 | `diary` | `action` (`recall` / `list` / `write`), plus `work`, `well`, `wrong` | Session retrospective shared across agents and clones |
 | `todo` | `action` (`add` / `list` / `start` / `done`), plus `title` or `id` | Shared in-progress work |
+| `rule` | `action` (`add` / `list` / `remove`), `from`, `to`, optional `note` | Architecture contract: `from` must not import or call `to` |
+| `check` | optional `path` | Fail when a recorded rule is broken in the source tree |
 | `sync` | none | Fetch `refs/lepper/notes`, merge with this clone, and push |
 
 Example: after creating `src/cache`, call `record` with a note that the cache

@@ -13,8 +13,11 @@ If an agent adds `src/cache`, it records something like:
 The next agent can `find "where is caching"` or `map src/cache` and get that
 context without reading the whole implementation.
 
-`lepper preflight` is the briefing to read before touching code. It answers
-what an agent should know about a file, a symbol, or the current diff: recorded
+`lepper rule add` records an architecture contract: files under one path must
+not import or call another. `lepper check` reads the source and fails when a
+contract is broken. `lepper preflight` is the briefing to read before touching
+code. It answers what an agent should know about a file, a symbol, or the
+current diff: recorded
 notes, active todos, notes that may be stale, what the change would affect,
 and which tests to run. `lepper blast` is the narrower question: what would
 be affected if you changed a file or a symbol. `lepper codemap` reads the
@@ -58,7 +61,7 @@ repo or worktree path.
 Full client configs, tools, worktrees, and troubleshooting:
 [docs/mcp.md](docs/mcp.md).
 
-Tools: `preflight`, `record`, `map`, `find`, `codemap`, `blast`, `diary`, `todo`, `sync`.
+Tools: `preflight`, `record`, `map`, `find`, `codemap`, `blast`, `diary`, `todo`, `rule`, `check`, `sync`.
 
 ## CLI
 
@@ -71,6 +74,9 @@ lepper map src/cache
 lepper find "where is caching"
 lepper preflight src/cache.js#get
 lepper preflight --diff
+lepper rule add --from src/controllers --to src/payments -n "Do not call Stripe from controllers"
+lepper check
+lepper check src/controllers
 lepper codemap
 lepper codemap src/cache --symbol get
 lepper blast src/cache.js#get

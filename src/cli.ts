@@ -8,6 +8,8 @@ import findCommand from './search/cli';
 import codeCommand from './codemap/cli-codemap';
 import blastCommand from './codemap/cli-blast';
 import preflightCommand from './preflight/cli';
+import checkCommand from './rules/cli-check';
+import ruleCommand from './rules/cli-rule';
 import diaryCommand from './diary/cli';
 import todoCommand from './todos/cli';
 import syncCommand from './notes/cli-sync';
@@ -25,7 +27,7 @@ export function createProgram(): Command {
   program
     .name('lepper')
     .description(
-      'Shared notes for AI agents working on a codebase. Start with preflight, then record, map, find, codemap, blast, diary, and todo.',
+      'Shared notes for AI agents working on a codebase. Start with preflight, then record, map, find, codemap, blast, diary, todo, and rule.',
     )
     .usage('command [options]')
     .version(
@@ -129,6 +131,51 @@ export function createProgram(): Command {
         });
       },
     );
+
+  program
+    .command('rule')
+    .description(
+      'Architecture contracts: files under --from must not import or call --to',
+    )
+    .argument('[action]', 'add, list, or remove', 'list')
+    .argument('[id]', 'Rule id for remove')
+    .option('--from <path>', 'Path that must not depend on --to')
+    .option('--to <path>', 'Path that --from must not import or call')
+    .option('-n, --note <text>', 'Why this boundary exists')
+    .option('--agent <name>', 'Agent name')
+    .option('--json', 'Print JSON')
+    .action(
+      (
+        action: string,
+        id: string | undefined,
+        options: {
+          from?: string;
+          to?: string;
+          note?: string;
+          agent?: string;
+          json?: boolean;
+        },
+      ) => {
+        ruleCommand({
+          action,
+          id,
+          from: options.from,
+          to: options.to,
+          note: options.note,
+          agent: options.agent,
+          json: options.json,
+        });
+      },
+    );
+
+  program
+    .command('check')
+    .description('Check architecture rules against the source tree')
+    .argument('[path]', 'Optional file or directory to limit')
+    .option('--json', 'Print JSON')
+    .action((pathArg: string | undefined, options: { json?: boolean }) => {
+      checkCommand({ path: pathArg, json: options.json });
+    });
 
   program
     .command('find')

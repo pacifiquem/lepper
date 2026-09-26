@@ -49,6 +49,25 @@ export interface TodoIndex {
   todos: Record<string, TodoItem>;
 }
 
+export interface RuleItem {
+  id: string;
+  fingerprint: string;
+  /** Files under this path must not depend on `to`. */
+  from: string;
+  /** Imports and calls into this path are forbidden from `from`. */
+  to: string;
+  note: string;
+  createdAt: string;
+  updatedAt: string;
+  agent?: string;
+}
+
+export interface RuleIndex {
+  version: number;
+  updatedAt: string;
+  rules: Record<string, RuleItem>;
+}
+
 export interface DiaryEntry {
   id: string;
   fingerprint: string;

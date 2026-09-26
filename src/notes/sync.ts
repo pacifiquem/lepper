@@ -15,6 +15,7 @@ import {
   LepperIndex,
   NoteBlob,
   NoteSummary,
+  RuleIndex,
   TodoIndex,
 } from '../utils/types';
 import {
@@ -23,11 +24,13 @@ import {
   readDiary,
   readIndex,
   readNoteBlob,
+  readRules,
   readTodos,
   Store,
   writeDiary,
   writeIndex,
   writeNoteBlob,
+  writeRules,
   writeTodos,
 } from '../utils/store';
 import { CliError } from '../utils/errors';
@@ -203,6 +206,40 @@ function sameFingerprints(
   return true;
 }
 
+function mergeRules(local: RuleIndex, incoming: RuleIndex): RuleIndex {
+  const rules = { ...local.rules };
+  for (const [id, remoteRule] of Object.entries(incoming.rules || {})) {
+    const current = rules[id];
+    if (!current || newer(remoteRule.updatedAt, current.updatedAt)) {
+      rules[id] = remoteRule;
+    }
+  }
+  return {
+    version: local.version,
+    updatedAt: new Date().toISOString(),
+    rules,
+  };
+}
+
+function sameRules(left: RuleIndex, right: RuleIndex): boolean {
+  const leftKeys = Object.keys(left.rules);
+  if (leftKeys.length !== Object.keys(right.rules).length) {
+    return false;
+  }
+  for (const key of leftKeys) {
+    const current = left.rules[key];
+    const incoming = right.rules[key];
+    if (
+      !incoming ||
+      incoming.fingerprint !== current.fingerprint ||
+      incoming.updatedAt !== current.updatedAt
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function sameTodos(left: TodoIndex, right: TodoIndex): boolean {
   const leftKeys = Object.keys(left.todos);
   if (leftKeys.length !== Object.keys(right.todos).length) {
@@ -317,11 +354,23 @@ function importStore(fromDir: string, into: Store): boolean {
     const diaryMatch = incomingDiary
       ? sameDiary(mergedDiary as DiaryIndex, incomingDiary)
       : Object.keys(localDiary.entries).length === 0;
+    const remoteRulesPath = path.join(fromDir, 'rules.json');
+    const incomingRules = fs.existsSync(remoteRulesPath)
+      ? (JSON.parse(fs.readFileSync(remoteRulesPath, 'utf-8')) as RuleIndex)
+      : undefined;
+    const localRules = readRules(into);
+    const mergedRules = incomingRules
+      ? mergeRules(localRules, incomingRules)
+      : undefined;
+    const rulesMatch = incomingRules
+      ? sameRules(mergedRules as RuleIndex, incomingRules)
+      : Object.keys(localRules.rules).length === 0;
 
-    if (notesMatch && todosMatch && diaryMatch) {
+    if (notesMatch && todosMatch && diaryMatch && rulesMatch) {
       fs.copyFileSync(remoteIndexPath, path.join(into.dir, 'index.json'));
       copyFileIfPresent(remoteTodosPath, path.join(into.dir, 'todos.json'));
       copyFileIfPresent(remoteDiaryPath, path.join(into.dir, 'diary.json'));
+      copyFileIfPresent(remoteRulesPath, path.join(into.dir, 'rules.json'));
       copyFileIfPresent(
         path.join(fromDir, 'search.json'),
         path.join(into.dir, 'search.json'),
@@ -344,6 +393,9 @@ function importStore(fromDir: string, into: Store): boolean {
     }
     if (mergedDiary && incomingDiary && !diaryMatch) {
       writeDiary(into, mergedDiary);
+    }
+    if (mergedRules && incomingRules && !rulesMatch) {
+      writeRules(into, mergedRules);
     }
     return true;
   }

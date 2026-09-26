@@ -25,6 +25,7 @@ describe('deprecated commands', () => {
     expect(names).toEqual(
       [
         'blast',
+        'check',
         'codemap',
         'describe',
         'diary',
@@ -35,6 +36,7 @@ describe('deprecated commands', () => {
         'preflight',
         'profile',
         'record',
+        'rule',
         'sync',
         'todo',
         'verify',
