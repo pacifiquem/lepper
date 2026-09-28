@@ -253,8 +253,8 @@ async function handle(message: JsonRpcRequest): Promise<void> {
     const capabilities = params.capabilities;
     clientRoots = Boolean(
       capabilities &&
-        typeof capabilities === 'object' &&
-        (capabilities as { roots?: unknown }).roots,
+      typeof capabilities === 'object' &&
+      (capabilities as { roots?: unknown }).roots,
     );
     respond(id, {
       protocolVersion,
@@ -398,7 +398,7 @@ export async function startMcpServer(): Promise<void> {
         reading = false;
         continue;
       }
-      buffer = taken.rest;
+      buffer = taken.rest as typeof buffer;
       if (!taken.message.method && taken.message.id == null) {
         continue;
       }

@@ -167,14 +167,84 @@ export function recordNote(store: Store, input: RecordInput): NoteBlob {
   };
 
   writeNoteBlob(store, note);
-  recoverStoredNotes(store);
-  rebuildSearchIndex(store);
+  index.notes[normalized] = summaryFrom(note);
+  writeIndex(store, index);
+  indexRecordedNote(store, current?.fingerprint ?? null, note);
   maybePack(store);
+  return note;
+}
 
-  const saved = historyFor(store, normalized).find(
-    (item) => noteVersionKey(item) === noteVersionKey(note),
+function shiftFrequency(
+  df: Record<string, number>,
+  doc: SearchDoc,
+  delta: number,
+): void {
+  for (const term of Object.keys(doc.tf)) {
+    const next = (df[term] || 0) + delta;
+    if (next <= 0) {
+      delete df[term];
+    } else {
+      df[term] = next;
+    }
+  }
+}
+
+/**
+ * Add the new tip to the search index and drop the previous tip on that path.
+ * A full rebuild still runs when the index is missing or out of date.
+ */
+function indexRecordedNote(
+  store: Store,
+  previousFingerprint: string | null,
+  note: NoteBlob,
+): void {
+  const notes = listNotes(store);
+  const search = readSearchIndex(store);
+  const docs = search.docs || {};
+  const fingerprints = new Set(notes.map((item) => item.fingerprint));
+  let missing = 0;
+  for (const item of notes) {
+    if (!docs[item.fingerprint]) {
+      missing += 1;
+    }
+  }
+  let extra = 0;
+  for (const key of Object.keys(docs)) {
+    if (!fingerprints.has(key)) {
+      extra += 1;
+    }
+  }
+  const previousIsExtra = Boolean(
+    previousFingerprint &&
+    !fingerprints.has(previousFingerprint) &&
+    docs[previousFingerprint],
   );
-  return saved || note;
+  const canPatch =
+    search.analyzer === SEARCH_ANALYZER &&
+    missing === 1 &&
+    !docs[note.fingerprint] &&
+    (extra === 0 || (extra === 1 && previousIsExtra));
+
+  if (!canPatch) {
+    rebuildSearchIndex(store, notes);
+    return;
+  }
+
+  const nextDocs = { ...docs };
+  const df = { ...(search.df || {}) };
+  if (previousFingerprint && nextDocs[previousFingerprint]) {
+    shiftFrequency(df, nextDocs[previousFingerprint], -1);
+    delete nextDocs[previousFingerprint];
+  }
+  const doc = noteSearchDoc(note);
+  nextDocs[note.fingerprint] = doc;
+  shiftFrequency(df, doc, 1);
+  writeSearchIndex(store, {
+    version: STORE_VERSION,
+    analyzer: SEARCH_ANALYZER,
+    df,
+    docs: nextDocs,
+  });
 }
 
 /**

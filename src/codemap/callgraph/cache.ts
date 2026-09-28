@@ -300,21 +300,21 @@ function retargetRenamedFiles(
     ...diffChanges(root, 'HEAD'),
   ]);
   let dirty = false;
-  for (const [fromGit, toGit] of renames) {
+  renames.forEach((toGit, fromGit) => {
     const from = dotPath(fromGit);
     const to = dotPath(toGit);
     const entry = index.files[from];
     if (!entry || index.files[to] || !live.has(to) || live.has(from)) {
-      continue;
+      return;
     }
-    let stat: fs.Stats;
+    let stat: fs.Stats | undefined;
     try {
       stat = fs.statSync(path.join(root, toGit));
     } catch {
-      continue;
+      return;
     }
     if (stat.size !== entry.size) {
-      continue;
+      return;
     }
     index.files[to] = {
       hash: entry.hash,
@@ -323,7 +323,7 @@ function retargetRenamedFiles(
     };
     delete index.files[from];
     dirty = true;
-  }
+  });
   return dirty;
 }
 

@@ -444,10 +444,10 @@ function publish(
   const local = rev(store, LEPPER_REF);
   const diverged = Boolean(
     local &&
-      remote &&
-      local !== remote &&
-      !isAncestor(store, local, remote) &&
-      !isAncestor(store, remote, local),
+    remote &&
+    local !== remote &&
+    !isAncestor(store, local, remote) &&
+    !isAncestor(store, remote, local),
   );
 
   if (

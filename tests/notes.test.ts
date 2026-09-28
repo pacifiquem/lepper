@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { withLepper } from '../src/notes/session';
 import { resolveGit } from '../src/utils/git';
 import { historyFor, listNotes, recordNote } from '../src/notes/notes';
+import { findNotes } from '../src/search/search';
 import {
   createGitRepo,
   mkdirp,
@@ -73,6 +74,28 @@ describe('recordNote', () => {
       'second version',
       'first version',
     ]);
+  });
+
+  it('keeps search pointed at the latest version after a long chain', () => {
+    const cwd = repo();
+    withLepper(cwd, (store) => {
+      for (let version = 0; version < 12; version += 1) {
+        recordNote(store, {
+          path: 'src/cache',
+          note:
+            version === 11
+              ? 'latest cache lives in memory for nine minutes'
+              : `older cache note ${version}`,
+        });
+      }
+    });
+
+    const found = withLepper(cwd, (store) => {
+      expect(historyFor(store, 'src/cache')).toHaveLength(12);
+      return findNotes(store, { query: 'nine minutes' });
+    });
+    expect(found[0]?.body).toMatch(/nine minutes/);
+    expect(found.some((hit) => /older cache note/.test(hit.body))).toBe(false);
   });
 
   it('imports legacy .lepper/_info.json descriptions once', () => {

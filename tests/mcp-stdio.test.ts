@@ -142,7 +142,7 @@ class Client {
       if (!taken) {
         return;
       }
-      this.buffer = taken.rest;
+      this.buffer = taken.rest as typeof this.buffer;
       if (
         taken.message.method == null &&
         taken.message.id == null &&
